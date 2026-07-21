@@ -1,26 +1,26 @@
-# Migration from v0.1
+# 从 v0.1 迁移
 
-Version 0.1 used a shared catalog, four profiles, shared eval directories, and generated multiple repo-local Skills. Tag `v0.1.0` retains that design.
+0.1 版本使用共享 catalog、四种 profile、共享评估目录，并在同一个本地仓库中生成多个 Skill。标签 `v0.1.0` 保留了该设计。
 
-Version 0.2 intentionally breaks that architecture:
+0.2 版本有意进行了破坏性架构变更：
 
-- one universal repository template replaces all profiles;
-- one Skill receives one independent Git repository;
-- `workflow.yaml` becomes the execution source of truth;
-- Runner replaces agent-selected sequencing;
-- `.core-lock.json` freezes stable behavior;
-- learning moves into each Skill repository;
-- catalog metadata is removed;
-- growth occurs through advisory events and reviewed promotion rather than direct core edits.
+- 使用一个通用仓库模板取代全部 profile；
+- 每个 Skill 都拥有一个独立 Git 仓库；
+- `workflow.yaml` 成为执行流程的唯一事实来源；
+- Runner 取代由 Agent 自行选择执行顺序的方式；
+- `.core-lock.json` 冻结稳定行为；
+- 学习系统移动到每个 Skill 自己的仓库中；
+- 移除 catalog 元数据；
+- 通过建议事件和受审查的晋升实现成长，不再直接修改核心。
 
-To migrate a v0.1 Skill:
+迁移一个 v0.1 Skill 时：
 
-1. Generate a new independent repository with the same Skill name and routing description.
-2. Convert the old procedural sections into explicit workflow nodes.
-3. Convert fixed operations into scripts and schemas.
-4. Convert each safety rule into side-effect, confirmation, stop, validator, or fallback fields.
-5. Move detailed references only when Runner-directed reasoning needs them.
-6. Add regression tests for the old Skill's successful and failed cases.
-7. Set `configured=true`, freeze core, and tag the independent repository.
+1. 使用相同的 Skill 名称和路由描述生成一个新的独立仓库。
+2. 将旧版流程章节转换为明确的工作流节点。
+3. 将固定操作转换为脚本和 Schema。
+4. 将每条安全规则转换为副作用、确认、停止、validator 或 fallback 字段。
+5. 只有在 Runner 指定的 reasoning 节点确实需要时，才迁移详细参考资料。
+6. 为旧 Skill 的成功案例和失败案例添加回归测试。
+7. 设置 `configured=true`，冻结核心，并为独立仓库创建版本标签。
 
-Do not copy the old catalog or shared eval control plane into the new repository.
+不要把旧 catalog 或共享评估控制面复制到新仓库中。
