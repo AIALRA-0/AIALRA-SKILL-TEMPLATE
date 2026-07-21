@@ -175,63 +175,145 @@ def validate_workflow(
     workflow: dict[str, Any], skill_dir: Path, *, allow_draft: bool = False
 ) -> list[str]:
     errors: list[str] = []
-    required_top = {
-        "ir_version",
-        "skill_name",
-        "configured",
-        "entry_node",
-        "limits",
-        "learning",
-        "nodes",
-        "final_output_schema",
-        "final_validator",
-    }
+    required_top = {"definition", "execution", "learning"}
     missing = sorted(required_top - set(workflow))
     if missing:
-        errors.append(f"workflow missing fields: {', '.join(missing)}")
-    if workflow.get("ir_version") != 1:
-        errors.append("workflow.ir_version must be 1")
-    if workflow.get("skill_name") != skill_dir.name:
-        errors.append("workflow.skill_name must match the Skill directory")
-    if not isinstance(workflow.get("configured"), bool):
-        errors.append("workflow.configured must be boolean")
-    elif workflow.get("configured") is False and not allow_draft:
-        errors.append("workflow is still a draft; set configured=true only after domain design and tests")
+        errors.append(f"workflow missing top-level categories: {', '.join(missing)}")
+    unclassified = sorted(set(workflow) - required_top)
+    if unclassified:
+        errors.append(
+            "workflow contains unclassified top-level fields: " + ", ".join(unclassified)
+        )
 
-    limits = workflow.get("limits")
+    definition = workflow.get("definition")
+    if not isinstance(definition, dict):
+        errors.append("workflow.definition must be an object")
+        definition = {}
+    required_definition = {"ir_version", "skill_name", "configured"}
+    missing_definition = sorted(required_definition - set(definition))
+    if missing_definition:
+        errors.append(
+            "workflow.definition missing fields: " + ", ".join(missing_definition)
+        )
+    extra_definition = sorted(set(definition) - required_definition)
+    if extra_definition:
+        errors.append(
+            "workflow.definition contains unknown fields: " + ", ".join(extra_definition)
+        )
+    if definition.get("ir_version") != 2:
+        errors.append("workflow.definition.ir_version must be 2")
+    if definition.get("skill_name") != skill_dir.name:
+        errors.append("workflow.definition.skill_name must match the Skill directory")
+    if not isinstance(definition.get("configured"), bool):
+        errors.append("workflow.definition.configured must be boolean")
+    elif definition.get("configured") is False and not allow_draft:
+        errors.append(
+            "workflow is still a draft; set definition.configured=true only after domain design and tests"
+        )
+
+    execution = workflow.get("execution")
+    if not isinstance(execution, dict):
+        errors.append("workflow.execution must be an object")
+        execution = {}
+    required_execution = {"limits", "graph", "completion"}
+    missing_execution = sorted(required_execution - set(execution))
+    if missing_execution:
+        errors.append(
+            "workflow.execution missing categories: " + ", ".join(missing_execution)
+        )
+    extra_execution = sorted(set(execution) - required_execution)
+    if extra_execution:
+        errors.append(
+            "workflow.execution contains unclassified fields: " + ", ".join(extra_execution)
+        )
+
+    limits = execution.get("limits")
     if not isinstance(limits, dict):
-        errors.append("workflow.limits must be an object")
+        errors.append("workflow.execution.limits must be an object")
         limits = {}
+    required_limits = {"max_nodes", "total_timeout_seconds"}
+    missing_limits = sorted(required_limits - set(limits))
+    if missing_limits:
+        errors.append(
+            "workflow.execution.limits missing fields: " + ", ".join(missing_limits)
+        )
+    extra_limits = sorted(set(limits) - required_limits)
+    if extra_limits:
+        errors.append(
+            "workflow.execution.limits contains unknown fields: " + ", ".join(extra_limits)
+        )
     for key, lower, upper in (
         ("max_nodes", 1, 64),
         ("total_timeout_seconds", 1, 86400),
     ):
         value = limits.get(key)
         if not isinstance(value, int) or not lower <= value <= upper:
-            errors.append(f"workflow.limits.{key} must be {lower}-{upper}")
+            errors.append(f"workflow.execution.limits.{key} must be {lower}-{upper}")
 
     learning = workflow.get("learning")
     if not isinstance(learning, dict):
         errors.append("workflow.learning must be an object")
         learning = {}
-    threshold = learning.get("compact_every")
-    active_limit = learning.get("active_rule_limit")
+    required_learning = {"compaction"}
+    missing_learning = sorted(required_learning - set(learning))
+    if missing_learning:
+        errors.append(
+            "workflow.learning missing categories: " + ", ".join(missing_learning)
+        )
+    extra_learning = sorted(set(learning) - required_learning)
+    if extra_learning:
+        errors.append(
+            "workflow.learning contains unclassified fields: " + ", ".join(extra_learning)
+        )
+    compaction = learning.get("compaction")
+    if not isinstance(compaction, dict):
+        errors.append("workflow.learning.compaction must be an object")
+        compaction = {}
+    required_compaction = {"compact_every", "active_rule_limit"}
+    missing_compaction = sorted(required_compaction - set(compaction))
+    if missing_compaction:
+        errors.append(
+            "workflow.learning.compaction missing fields: " + ", ".join(missing_compaction)
+        )
+    extra_compaction = sorted(set(compaction) - required_compaction)
+    if extra_compaction:
+        errors.append(
+            "workflow.learning.compaction contains unknown fields: "
+            + ", ".join(extra_compaction)
+        )
+    threshold = compaction.get("compact_every")
+    active_limit = compaction.get("active_rule_limit")
     if not isinstance(threshold, int) or not 4 <= threshold <= 1000:
-        errors.append("workflow.learning.compact_every must be 4-1000")
+        errors.append("workflow.learning.compaction.compact_every must be 4-1000")
     if not isinstance(active_limit, int) or not 1 <= active_limit <= 500:
-        errors.append("workflow.learning.active_rule_limit must be 1-500")
+        errors.append("workflow.learning.compaction.active_rule_limit must be 1-500")
     if isinstance(threshold, int) and isinstance(active_limit, int) and active_limit > threshold // 2:
         errors.append("active_rule_limit must be at most half of compact_every")
 
-    nodes = workflow.get("nodes")
+    graph = execution.get("graph")
+    if not isinstance(graph, dict):
+        errors.append("workflow.execution.graph must be an object")
+        graph = {}
+    required_graph = {"entry_node", "nodes"}
+    missing_graph = sorted(required_graph - set(graph))
+    if missing_graph:
+        errors.append(
+            "workflow.execution.graph missing fields: " + ", ".join(missing_graph)
+        )
+    extra_graph = sorted(set(graph) - required_graph)
+    if extra_graph:
+        errors.append(
+            "workflow.execution.graph contains unknown fields: " + ", ".join(extra_graph)
+        )
+    nodes = graph.get("nodes")
     if not isinstance(nodes, list) or not nodes:
-        errors.append("workflow.nodes must be a non-empty array")
+        errors.append("workflow.execution.graph.nodes must be a non-empty array")
         nodes = []
     if isinstance(limits.get("max_nodes"), int) and len(nodes) > limits["max_nodes"]:
-        errors.append("workflow contains more nodes than limits.max_nodes")
+        errors.append("workflow contains more nodes than execution.limits.max_nodes")
     node_map: dict[str, dict[str, Any]] = {}
     for index, node in enumerate(nodes):
-        label = f"nodes[{index}]"
+        label = f"execution.graph.nodes[{index}]"
         if not isinstance(node, dict):
             errors.append(f"{label} must be an object")
             continue
@@ -327,9 +409,9 @@ def validate_workflow(
                 f"{label}.stop_conditions must be an array of at most 16 non-empty strings"
             )
 
-    entry = workflow.get("entry_node")
+    entry = graph.get("entry_node")
     if entry not in node_map:
-        errors.append("workflow.entry_node does not exist")
+        errors.append("workflow.execution.graph.entry_node does not exist")
     for node_id, node in node_map.items():
         success = node.get("on_success")
         if not isinstance(success, str) or not success:
@@ -367,17 +449,33 @@ def validate_workflow(
         errors.append(f"workflow contains unreachable nodes: {', '.join(unreachable)}")
     for node_id in sorted(node_map):
         visit(node_id)
+    completion = execution.get("completion")
+    if not isinstance(completion, dict):
+        errors.append("workflow.execution.completion must be an object")
+        completion = {}
+    required_completion = {"output_schema", "validator"}
+    missing_completion = sorted(required_completion - set(completion))
+    if missing_completion:
+        errors.append(
+            "workflow.execution.completion missing fields: " + ", ".join(missing_completion)
+        )
+    extra_completion = sorted(set(completion) - required_completion)
+    if extra_completion:
+        errors.append(
+            "workflow.execution.completion contains unknown fields: "
+            + ", ".join(extra_completion)
+        )
     try:
-        safe_skill_path(skill_dir, workflow.get("final_output_schema"))
+        safe_skill_path(skill_dir, completion.get("output_schema"))
     except RuntimeErrorDetail as exc:
-        errors.append(f"workflow.final_output_schema: {exc}")
-    final_validator = workflow.get("final_validator")
+        errors.append(f"workflow.execution.completion.output_schema: {exc}")
+    final_validator = completion.get("validator")
     if final_validator is not None and (
         not isinstance(final_validator, list)
         or not final_validator
         or not all(isinstance(token, str) and token for token in final_validator)
     ):
-        errors.append("workflow.final_validator must be null or an argv array")
+        errors.append("workflow.execution.completion.validator must be null or an argv array")
     return errors
 
 

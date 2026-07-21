@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0] - 2026-07-21
+
+### Changed
+
+- Grouped every `workflow.yaml` top-level field under `definition`, `execution`, or `learning`.
+- Split execution settings into `limits`, `graph`, and `completion`, and learning settings into `compaction`.
+- Upgraded the Workflow IR to version 2 and reject unclassified or unknown configuration fields.
+
 ## [0.2.0] - 2026-07-20
 
 ### Changed

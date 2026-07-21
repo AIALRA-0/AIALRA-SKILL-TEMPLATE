@@ -91,38 +91,48 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             encoding="utf-8",
         )
         workflow = {
-            "ir_version": 1,
-            "skill_name": "normalize-text-skill",
-            "configured": True,
-            "entry_node": "normalize-text",
-            "limits": {"max_nodes": 4, "total_timeout_seconds": 60},
-            "learning": {"compact_every": 32, "active_rule_limit": 16},
-            "nodes": [
-                {
-                    "id": "normalize-text",
-                    "input_schema": "schemas/input.schema.json",
-                    "output_schema": "schemas/output.schema.json",
-                    "executor": "script",
-                    "command": [
-                        "python3",
-                        "executors/normalize.py",
-                        "--input",
-                        "${input_file}",
-                        "--output",
-                        "${output_file}",
+            "definition": {
+                "ir_version": 2,
+                "skill_name": "normalize-text-skill",
+                "configured": True,
+            },
+            "learning": {
+                "compaction": {"compact_every": 32, "active_rule_limit": 16}
+            },
+            "execution": {
+                "limits": {"max_nodes": 4, "total_timeout_seconds": 60},
+                "graph": {
+                    "entry_node": "normalize-text",
+                    "nodes": [
+                        {
+                            "id": "normalize-text",
+                            "input_schema": "schemas/input.schema.json",
+                            "output_schema": "schemas/output.schema.json",
+                            "executor": "script",
+                            "command": [
+                                "python3",
+                                "executors/normalize.py",
+                                "--input",
+                                "${input_file}",
+                                "--output",
+                                "${output_file}",
+                            ],
+                            "side_effect": "none",
+                            "requires_confirmation": False,
+                            "timeout_seconds": 10,
+                            "max_retries": 1,
+                            "validator": None,
+                            "fallback": None,
+                            "on_success": "__complete__",
+                            "stop_conditions": [],
+                        }
                     ],
-                    "side_effect": "none",
-                    "requires_confirmation": False,
-                    "timeout_seconds": 10,
-                    "max_retries": 1,
+                },
+                "completion": {
+                    "output_schema": "schemas/output.schema.json",
                     "validator": None,
-                    "fallback": None,
-                    "on_success": "__complete__",
-                    "stop_conditions": [],
-                }
-            ],
-            "final_output_schema": "schemas/output.schema.json",
-            "final_validator": None,
+                },
+            },
         }
         (skill / "workflow.yaml").write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
         run_json([sys.executable, str(skill / "scripts" / "freeze_core.py")], repo)
@@ -131,6 +141,16 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
     def test_draft_repository_is_initialized_and_locked(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = self.create_repository(Path(temporary))
+            workflow = json.loads(
+                (
+                    repo
+                    / ".agents"
+                    / "skills"
+                    / "normalize-text-skill"
+                    / "workflow.yaml"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual({"definition", "execution", "learning"}, set(workflow))
             self.assertTrue((repo / ".git").is_dir())
             self.assertTrue((repo / ".core-lock.json").is_file())
             payload = run_json([sys.executable, "scripts/validate.py", "--allow-draft"], repo)
@@ -220,9 +240,10 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             )
             workflow_path = skill / "workflow.yaml"
             workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
-            recovery = dict(workflow["nodes"][0])
+            graph = workflow["execution"]["graph"]
+            recovery = dict(graph["nodes"][0])
             recovery["id"] = "recover-text"
-            unstable = dict(workflow["nodes"][0])
+            unstable = dict(graph["nodes"][0])
             unstable.update(
                 {
                     "id": "unstable-step",
@@ -232,8 +253,8 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
                     "on_success": "__complete__",
                 }
             )
-            workflow["entry_node"] = "unstable-step"
-            workflow["nodes"] = [unstable, recovery]
+            graph["entry_node"] = "unstable-step"
+            graph["nodes"] = [unstable, recovery]
             workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
             run_json([sys.executable, str(skill / "scripts" / "freeze_core.py")], repo)
             input_file = repo / "fallback-input.json"
@@ -274,7 +295,7 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             skill = self.configure_deterministic_workflow(repo)
             workflow_path = skill / "workflow.yaml"
             workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
-            workflow["limits"]["max_nodes"] = 5
+            workflow["execution"]["limits"]["max_nodes"] = 5
             workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
             input_file = repo / "input.json"
             input_file.write_text('{"text":"alpha"}\n', encoding="utf-8")
@@ -291,31 +312,46 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             repo = self.create_repository(Path(temporary))
             skill = repo / ".agents" / "skills" / "normalize-text-skill"
             workflow = {
-                "ir_version": 1,
-                "skill_name": "normalize-text-skill",
-                "configured": True,
-                "entry_node": "external-write",
-                "limits": {"max_nodes": 4, "total_timeout_seconds": 60},
-                "learning": {"compact_every": 32, "active_rule_limit": 16},
-                "nodes": [
-                    {
-                        "id": "external-write",
-                        "input_schema": "schemas/input.schema.json",
+                "definition": {
+                    "ir_version": 2,
+                    "skill_name": "normalize-text-skill",
+                    "configured": True,
+                },
+                "learning": {
+                    "compaction": {"compact_every": 32, "active_rule_limit": 16}
+                },
+                "execution": {
+                    "limits": {"max_nodes": 4, "total_timeout_seconds": 60},
+                    "graph": {
+                        "entry_node": "external-write",
+                        "nodes": [
+                            {
+                                "id": "external-write",
+                                "input_schema": "schemas/input.schema.json",
+                                "output_schema": "schemas/output.schema.json",
+                                "executor": "mcp",
+                                "action": {
+                                    "name": "example.write",
+                                    "arguments": {"from": "node-input"},
+                                },
+                                "side_effect": "write",
+                                "requires_confirmation": True,
+                                "timeout_seconds": 10,
+                                "max_retries": 0,
+                                "validator": None,
+                                "fallback": None,
+                                "on_success": "__complete__",
+                                "stop_conditions": [
+                                    "Stop if the user does not confirm the external write."
+                                ],
+                            }
+                        ],
+                    },
+                    "completion": {
                         "output_schema": "schemas/output.schema.json",
-                        "executor": "mcp",
-                        "action": {"name": "example.write", "arguments": {"from": "node-input"}},
-                        "side_effect": "write",
-                        "requires_confirmation": True,
-                        "timeout_seconds": 10,
-                        "max_retries": 0,
                         "validator": None,
-                        "fallback": None,
-                        "on_success": "__complete__",
-                        "stop_conditions": ["Stop if the user does not confirm the external write."],
-                    }
-                ],
-                "final_output_schema": "schemas/output.schema.json",
-                "final_validator": None,
+                    },
+                },
             }
             (skill / "workflow.yaml").write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
             run_json([sys.executable, str(skill / "scripts" / "freeze_core.py")], repo)
@@ -355,7 +391,7 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             skill = self.configure_deterministic_workflow(repo)
             workflow_path = skill / "workflow.yaml"
             workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
-            workflow["nodes"][0]["fallback"] = "__complete__"
+            workflow["execution"]["graph"]["nodes"][0]["fallback"] = "__complete__"
             workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
             payload = run_json(
                 [sys.executable, str(skill / "scripts" / "validate_repo.py"), "--ignore-core-lock"],
@@ -364,6 +400,24 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             )
             self.assertTrue(
                 any("cannot complete" in error for error in payload["errors"]), payload["errors"]
+            )
+
+    def test_workflow_rejects_unclassified_top_level_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = self.create_repository(Path(temporary))
+            skill = self.configure_deterministic_workflow(repo)
+            workflow_path = skill / "workflow.yaml"
+            workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+            workflow["configured"] = True
+            workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
+            payload = run_json(
+                [sys.executable, str(skill / "scripts" / "validate_repo.py"), "--ignore-core-lock"],
+                repo,
+                expected_code=1,
+            )
+            self.assertTrue(
+                any("unclassified top-level fields" in error for error in payload["errors"]),
+                payload["errors"],
             )
 
     def test_learning_compacts_losslessly_and_never_changes_core(self) -> None:
@@ -484,8 +538,9 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             skill = self.configure_deterministic_workflow(repo)
             workflow_path = skill / "workflow.yaml"
             workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
-            original = workflow["nodes"][0]
-            workflow["nodes"].extend(
+            graph = workflow["execution"]["graph"]
+            original = graph["nodes"][0]
+            graph["nodes"].extend(
                 [
                     {
                         **original,

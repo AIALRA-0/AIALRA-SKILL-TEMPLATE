@@ -39,7 +39,7 @@ def now_iso() -> str:
 
 
 def node_map(workflow: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    return {node["id"]: node for node in workflow["nodes"]}
+    return {node["id"]: node for node in workflow["execution"]["graph"]["nodes"]}
 
 
 def emit(payload: dict[str, Any]) -> None:
@@ -166,16 +166,17 @@ def final_validation(
     state: dict[str, Any], workflow: dict[str, Any], skill_dir: Path, output_file: Path
 ) -> list[str]:
     output = state["current_input"]
-    errors = validate_schema(output, schema_for(skill_dir, workflow["final_output_schema"]))
+    completion = workflow["execution"]["completion"]
+    errors = validate_schema(output, schema_for(skill_dir, completion["output_schema"]))
     if errors:
         return errors
-    validator = workflow.get("final_validator")
+    validator = completion.get("validator")
     message = run_validator(
         validator,
         skill_dir,
         output_file,
         output_file,
-        workflow["limits"]["total_timeout_seconds"],
+        workflow["execution"]["limits"]["total_timeout_seconds"],
     )
     return [message] if message else []
 
@@ -241,12 +242,13 @@ def handle_failure(
 
 
 def check_limits(state: dict[str, Any], workflow: dict[str, Any]) -> None:
-    if state["steps_executed"] >= workflow["limits"]["max_nodes"]:
-        raise RuntimeErrorDetail("Workflow exceeded limits.max_nodes")
+    limits = workflow["execution"]["limits"]
+    if state["steps_executed"] >= limits["max_nodes"]:
+        raise RuntimeErrorDetail("Workflow exceeded execution.limits.max_nodes")
     started = dt.datetime.fromisoformat(state["started_at"])
     elapsed = (dt.datetime.now(dt.timezone.utc) - started).total_seconds()
-    if elapsed > workflow["limits"]["total_timeout_seconds"]:
-        raise RuntimeErrorDetail("Workflow exceeded total_timeout_seconds")
+    if elapsed > limits["total_timeout_seconds"]:
+        raise RuntimeErrorDetail("Workflow exceeded execution.limits.total_timeout_seconds")
 
 
 def start(args: argparse.Namespace) -> dict[str, Any]:
@@ -255,16 +257,18 @@ def start(args: argparse.Namespace) -> dict[str, Any]:
     workflow = load_workflow(skill_dir)
     ensure_runtime_ready(root, skill_dir, workflow)
     initial = read_json(args.input.resolve())
-    entry = node_map(workflow)[workflow["entry_node"]]
+    definition = workflow["definition"]
+    graph = workflow["execution"]["graph"]
+    entry = node_map(workflow)[graph["entry_node"]]
     errors = validate_schema(initial, schema_for(skill_dir, entry["input_schema"]))
     if errors:
         raise RuntimeErrorDetail("Initial input is invalid: " + "; ".join(errors))
     state = {
         "state_id": uuid.uuid4().hex,
         "skill_name": skill_dir.name,
-        "workflow_ir_version": workflow["ir_version"],
+        "workflow_ir_version": definition["ir_version"],
         "status": "running",
-        "current_node": workflow["entry_node"],
+        "current_node": graph["entry_node"],
         "initial_input": initial,
         "current_input": initial,
         "node_results": {},

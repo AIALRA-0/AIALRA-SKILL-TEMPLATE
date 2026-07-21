@@ -78,6 +78,9 @@ def validate_ui_metadata(path: Path, skill_name: str) -> list[str]:
 
 def validate_learning(root: Path, workflow: dict) -> list[str]:
     errors: list[str] = []
+    learning = workflow.get("learning")
+    compaction = learning.get("compaction") if isinstance(learning, dict) else None
+    active_limit = compaction.get("active_rule_limit") if isinstance(compaction, dict) else None
     ledger = root / "learning" / "ledger.jsonl"
     try:
         events = read_jsonl(ledger)
@@ -101,7 +104,7 @@ def validate_learning(root: Path, workflow: dict) -> list[str]:
         rules = active.get("rules", []) if isinstance(active, dict) else None
         if not isinstance(rules, list):
             errors.append("learning/active-rules.json rules must be an array")
-        elif len(rules) > workflow["learning"]["active_rule_limit"]:
+        elif isinstance(active_limit, int) and len(rules) > active_limit:
             errors.append("active learning rules exceed workflow limit")
     archive_dir = root / "learning" / "archive"
     for archive in sorted(archive_dir.glob("*.jsonl")) if archive_dir.is_dir() else []:
@@ -164,7 +167,7 @@ def main() -> int:
                 {
                     "valid": True,
                     "skill": skill_dir.name,
-                    "configured": workflow["configured"],
+                    "configured": workflow["definition"]["configured"],
                     "core_lock_checked": not args.ignore_core_lock,
                 },
                 indent=2,

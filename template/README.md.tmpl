@@ -2,7 +2,7 @@
 
 Independent Git repository for the `$__SKILL_NAME__` Codex Skill.
 
-The repository starts in a safe draft state. The runner will refuse to execute until `workflow.yaml` contains a domain-specific graph and `configured` is set to `true` after tests.
+The repository starts in a safe draft state. The runner will refuse to execute until `workflow.yaml` contains a domain-specific graph and `definition.configured` is set to `true` after tests.
 
 ## Configure the Skill
 
@@ -18,7 +18,7 @@ The repository starts in a safe draft state. The runner will refuse to execute u
    python3 scripts/check_secrets.py
    ```
 
-6. Set `configured=true`, add domain regression tests, bump `VERSION`, and freeze core:
+6. Set `definition.configured=true`, add domain regression tests, bump `VERSION`, and freeze core:
 
    ```bash
    python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py

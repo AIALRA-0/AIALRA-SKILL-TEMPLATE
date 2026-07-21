@@ -83,7 +83,7 @@ flowchart TD
 
 图中的关键术语：
 
-- `workflow.yaml`：Skill 的工作流定义文件，声明入口节点、节点属性、成功路径、回退路径和全局执行限制；
+- `workflow.yaml`：Skill 的工作流定义文件；顶层只包含定义、执行和学习三个分类，具体条目进入对应的二级或三级结构；
 - Schema：JSON 数据契约，用于限定输入或输出必须包含的字段、类型、取值范围和附加属性；
 - Validator：Schema 之外的确定性检查程序，用于验证跨字段关系、业务规则或最终结果质量；
 - 状态 ID：一次 Skill 运行的唯一标识，用于保存当前节点、重试次数、确认记录、节点结果和执行轨迹；
@@ -145,7 +145,7 @@ AIALRA-SKILL-TEMPLATE/                                      # 模板工厂仓库
 │   │           │   ├── runtime_lib.py                      # 集中实现 JSON 读写、Schema 子集、路径限制、工作流验证、状态文件和核心哈希计算；
 │   │           │   └── validate_repo.py                    # 汇总检查名称、SKILL 元数据、UI 元数据、工作流图、学习文件和核心锁一致性；
 │   │           ├── SKILL.md.tmpl                           # 生成薄指令文件；声明触发边界、Runner 命令、外部节点提交方式和受控学习要求；
-│   │           └── workflow.yaml.tmpl                      # 提供 configured=false 的单节点草稿；领域设计和测试完成前 Runner 拒绝启动；
+│   │           └── workflow.yaml.tmpl                      # 按 definition、execution、learning 分类提供 definition.configured=false 的单节点草稿；
 │   ├── .github/                                            # 新 Skill 仓库的 GitHub 自动化素材目录；
 │   │   ├── dependabot.yml                                  # 每周检查生成仓库的 GitHub Actions 引用，创建独立依赖更新 PR；
 │   │   └── workflows/                                      # 新 Skill 仓库的 CI 工作流目录；
@@ -181,7 +181,7 @@ AIALRA-SKILL-TEMPLATE/                                      # 模板工厂仓库
 ├── CONTRIBUTING.md                                         # 要求每次模板变更说明不变量、补充成功与失败测试、评估 SemVer 并更新变更记录；
 ├── README.md                                               # 面向人类维护者解释设计原因、Runtime 流程、全部文件职责和新仓库生成方法；
 ├── SECURITY.md                                             # 记录敏感信息禁令、运行时防线、Gitleaks 层级、核心锁限制和泄漏响应步骤；
-└── VERSION                                                 # 记录模板工厂当前版本 0.2.0；用于发布、标签和迁移判断；
+└── VERSION                                                 # 记录模板工厂当前版本 0.3.0；用于发布、标签和迁移判断；
 ```
 
 ### 生成后的单 Skill 仓库：my-skill
@@ -210,7 +210,7 @@ my-skill/                                                   # 一个可以独立
 ├── .github/                                                # 当前 Skill 的 GitHub 自动化配置目录；
 │   ├── dependabot.yml                                      # 每周读取 workflow 中的 Actions 引用并创建依赖升级 PR，不直接修改运行核心；
 │   └── workflows/                                          # 当前 Skill 的 CI 工作流目录；
-│       └── validate.yml                                    # 在 PR 和 main 推送时检查 configured 状态、核心锁、测试、工作区敏感值和全部提交历史；
+│       └── validate.yml                                    # 在 PR 和 main 推送时检查 definition.configured、核心锁、测试、工作区敏感值和全部提交历史；
 ├── learning/                                               # 当前 Skill 的受控成长数据目录；
 │   ├── archive/                                            # 无损保存已处理批次的完整原始事件；
 │   │   └── .gitkeep                                        # 初始空占位；确保 archive/ 在首个达到配置阈值的批次产生前已经受 Git 管理；
@@ -264,7 +264,7 @@ python3 scripts/create_skill_repo.py \
 - 创建新的独立 Git 仓库；
 - 写入统一 Runner、学习系统、安全策略、测试和 CI；
 - 生成核心 SHA-256 锁；
-- 让工作流保持 `configured=false`，在领域图和回归测试完成前拒绝运行；
+- 让工作流保持 `definition.configured=false`，在领域图和回归测试完成前拒绝运行；
 
 ## 固化与成长
 

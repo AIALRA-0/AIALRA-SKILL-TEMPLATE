@@ -21,6 +21,6 @@
 4. 将每条安全规则转换为副作用、确认、停止、validator 或 fallback 字段。
 5. 只有在 Runner 指定的 reasoning 节点确实需要时，才迁移详细参考资料。
 6. 为旧 Skill 的成功案例和失败案例添加回归测试。
-7. 设置 `configured=true`，冻结核心，并为独立仓库创建版本标签。
+7. 设置 `definition.configured=true`，冻结核心，并为独立仓库创建版本标签。
 
 不要把旧 catalog 或共享评估控制面复制到新仓库中。

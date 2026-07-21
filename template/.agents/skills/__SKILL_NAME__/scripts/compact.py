@@ -73,8 +73,9 @@ def compact(root: Path, *, force: bool = False) -> dict[str, Any]:
     if lock_errors:
         raise RuntimeErrorDetail("Stable core check failed: " + "; ".join(lock_errors))
     workflow = load_workflow(skill_dir)
-    threshold = workflow["learning"]["compact_every"]
-    active_limit = workflow["learning"]["active_rule_limit"]
+    compaction = workflow["learning"]["compaction"]
+    threshold = compaction["compact_every"]
+    active_limit = compaction["active_rule_limit"]
     ledger_path = root / "learning" / "ledger.jsonl"
     lock_path = acquire_lock(root)
     try:
