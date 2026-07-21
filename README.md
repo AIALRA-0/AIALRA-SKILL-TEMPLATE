@@ -1,4 +1,4 @@
-# [AIALRA-SKILL-TEMPLATE](https://github.com/AIALRA-0/AIALRA-SKILL-TEMPLATE)
+# AIALRA-SKILL-TEMPLATE
 
 一个通用的、可执行的 Agent Skill 仓库模板。它统一每个 Skill 必须遵循的运行协议：
 
