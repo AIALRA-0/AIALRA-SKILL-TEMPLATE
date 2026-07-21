@@ -106,89 +106,85 @@ flowchart TD
 
 当前项目包含“模板工厂仓库”和“生成后的单 Skill 仓库”两个层次；模板工厂负责维护生成器、通用运行时和回归测试；`template/` 目录中的素材经过占位符替换后，才会组成一个新的独立 Skill 仓库；
 
-GitHub 原生支持 `<details>` 和 `<summary>`，下面的结构可以直接展开或折叠；代码块用于保持树形缩进和同行注释稳定显示；
+GitHub 的代码块可以稳定显示树形缩进和同行注释，但不支持让代码块内部的单个文件夹独立展开；以下结构保持完全展开，便于搜索文件名、复制路径和逐项审计；
 
-<details open>
-<summary><strong>模板工厂仓库：AIALRA-SKILL-TEMPLATE</strong></summary>
+### 模板工厂仓库：AIALRA-SKILL-TEMPLATE
 
 ```text
 AIALRA-SKILL-TEMPLATE/                                      # 模板工厂仓库根目录；维护生成协议、素材、测试和文档；
 ├── .git/                                                   # 当前模板工厂自身的 Git 元数据目录；不复制到新 Skill；
 ├── .github/                                                # 模板工厂在 GitHub 上使用的自动化配置目录；
-│   ├── dependabot.yml                                      # 定期检查 GitHub Actions 依赖更新；
+│   ├── dependabot.yml                                      # 每周检查 GitHub Actions 引用版本，并以 dependencies、security 标签创建更新 PR；
 │   └── workflows/                                          # GitHub Actions 工作流目录；
-│       └── validate.yml                                    # 验证模板、运行测试并执行敏感信息扫描；
+│       └── validate.yml                                    # 在 main 推送和 PR 上生成临时 Skill、运行完整测试、扫描当前文件与全部 Git 历史；
 ├── docs/                                                   # 模板设计、维护和迁移文档目录；
-│   ├── architecture.md                                     # 说明工作流 IR、Runner 状态机和核心锁架构；
-│   ├── learning.md                                         # 说明学习事件、无损归档、压缩和晋升机制；
-│   ├── maintenance.md                                      # 说明版本、发布、维护和弃用策略；
-│   ├── migration-v0.2.md                                  # 说明从旧 catalog/profile 结构迁移到当前结构；
-│   └── research-notes.md                                  # 记录模板设计所依据的规范与研究来源；
+│   ├── architecture.md                                     # 定义 Workflow IR 字段、Runner 状态转换、外部执行器协议、核心锁和草稿安全边界；
+│   ├── learning.md                                         # 定义学习事件格式、脱敏范围、归档顺序、活跃规则上限和人工晋升门槛；
+│   ├── maintenance.md                                      # 定义 PATCH、MINOR、MAJOR 判断方式，以及 Draft、Candidate、Stable、Deprecated 生命周期；
+│   ├── migration-v0.2.md                                  # 将旧 catalog、profile 和共享 eval 结构逐项映射到独立仓库与 workflow.yaml；
+│   └── research-notes.md                                  # 记录规范来源、关键设计依据、链接和最近一次人工复核日期；
 ├── scripts/                                                # 模板工厂自身的命令行工具目录；
-│   ├── check_secrets.py                                    # 扫描工作区中的常见凭据和敏感值；
-│   ├── create_skill_repo.py                                # 根据 template/ 素材创建独立 Skill Git 仓库；
-│   └── validate_template.py                                # 检查模板完整性并试生成临时 Skill 仓库；
+│   ├── check_secrets.py                                    # 逐个读取文本文件，匹配常见令牌和私钥模式，仅报告规则与位置并隐藏实际命中值；
+│   ├── create_skill_repo.py                                # 校验名称和描述，渲染全部占位符，冻结核心，验证草稿并初始化独立 Git 仓库；
+│   └── validate_template.py                                # 检查必需素材、Python 语法和废弃目录，再试生成仓库并拒绝残留占位符；
 ├── template/                                               # 创建新 Skill 时复制和渲染的完整仓库素材目录；
 │   ├── .agents/                                            # Agent Skill 的发现与运行文件目录；
 │   │   └── skills/                                         # Skill 定义集合目录；生成仓库只保留一个 Skill；
 │   │       └── __SKILL_NAME__/                             # Skill 名称占位目录；生成时替换为实际名称；
 │   │           ├── agents/                                 # Agent 产品界面和调用提示元数据目录；
-│   │           │   └── openai.yaml.tmpl                    # OpenAI/Codex 界面元数据模板；
+│   │           │   └── openai.yaml.tmpl                    # 生成 display_name、short_description 和 default_prompt，供兼容的 Agent 产品展示和调用；
 │   │           ├── schemas/                                # 默认 JSON 输入输出契约目录；
-│   │           │   ├── input.schema.json                   # 草稿入口节点的默认输入 Schema；
-│   │           │   └── output.schema.json                  # 草稿完成结果的默认输出 Schema；
+│   │           │   ├── input.schema.json                   # 只接受 request 字符串的安全草稿入口契约；配置领域工作流时必须具体化；
+│   │           │   └── output.schema.json                  # 只允许 not-configured 状态的安全草稿输出契约；防止通用模板伪装成成品；
 │   │           ├── scripts/                                # 每个 Skill 自带的确定性运行时脚本目录；
-│   │           │   ├── compact.py                          # 无损归档学习事件并限制活跃规则数量；
-│   │           │   ├── freeze_core.py                      # 生成或检查稳定核心的 SHA-256 清单；
-│   │           │   ├── learn.py                            # 为一个完成或暂停状态记录一条脱敏经验；
-│   │           │   ├── promote.py                          # 创建学习规则晋升提案；不会自动修改核心；
-│   │           │   ├── runner.py                           # 执行工作流状态机并控制节点、重试、回退和完成；
-│   │           │   ├── runtime_lib.py                      # 提供 Schema、路径、状态、工作流和核心锁公共函数；
-│   │           │   └── validate_repo.py                    # 验证生成后的单 Skill 仓库及其学习状态；
-│   │           ├── SKILL.md.tmpl                           # Skill 触发描述、执行协议和职责边界模板；
-│   │           └── workflow.yaml.tmpl                      # 图驱动工作流 IR 的安全草稿模板；
+│   │           │   ├── compact.py                          # 先写入内容寻址 JSONL 归档，再合并重复规则、限制活跃数量并安全截断热账本；
+│   │           │   ├── freeze_core.py                      # 枚举稳定核心文件并写入 SHA-256 清单；--check 模式只比较且不修改文件；
+│   │           │   ├── learn.py                            # 校验终态和核心锁，脱敏一句经验，保证每个 state_id 最多记录一次并触发压缩；
+│   │           │   ├── promote.py                          # 检查支持事件数量并生成包含全部未完成审查门槛的提案文件；不写入稳定核心；
+│   │           │   ├── runner.py                           # 创建和持久化运行状态，执行脚本节点，发出外部指令并控制校验、重试、回退和完成；
+│   │           │   ├── runtime_lib.py                      # 集中实现 JSON 读写、Schema 子集、路径限制、工作流验证、状态文件和核心哈希计算；
+│   │           │   └── validate_repo.py                    # 汇总检查名称、SKILL 元数据、UI 元数据、工作流图、学习文件和核心锁一致性；
+│   │           ├── SKILL.md.tmpl                           # 生成薄指令文件；声明触发边界、Runner 命令、外部节点提交方式和受控学习要求；
+│   │           └── workflow.yaml.tmpl                      # 提供 configured=false 的单节点草稿；领域设计和测试完成前 Runner 拒绝启动；
 │   ├── .github/                                            # 新 Skill 仓库的 GitHub 自动化素材目录；
-│   │   ├── dependabot.yml                                  # 新 Skill 仓库的 Actions 依赖更新配置；
+│   │   ├── dependabot.yml                                  # 每周检查生成仓库的 GitHub Actions 引用，创建独立依赖更新 PR；
 │   │   └── workflows/                                      # 新 Skill 仓库的 CI 工作流目录；
-│   │       └── validate.yml                                # 验证工作流、核心锁、测试和完整 Git 历史；
+│   │       └── validate.yml                                # 在 main 推送和 PR 上验证工作流与核心锁、运行测试、扫描文件并检查全部 Git 历史；
 │   ├── learning/                                           # 新 Skill 仓库的受控学习数据目录；
 │   │   ├── archive/                                        # 完整保存已压缩批次的原始学习事件；
-│   │   │   └── .gitkeep                                    # 让空归档目录能够进入初始 Git 版本；
+│   │   │   └── .gitkeep                                    # 空占位文件；首个归档批次产生前仍让 archive/ 目录进入初始提交；
 │   │   ├── proposals/                                      # 保存待人工审查的核心晋升提案；
-│   │   │   └── .gitkeep                                    # 让空提案目录能够进入初始 Git 版本；
-│   │   ├── active-rules.json                               # 保存有数量上限的活跃 advisory 规则；
-│   │   └── ledger.jsonl                                    # 保存尚未进入归档批次的原始学习事件；
+│   │   │   └── .gitkeep                                    # 空占位文件；首个晋升提案产生前仍让 proposals/ 目录进入初始提交；
+│   │   ├── active-rules.json                               # 初始化规则数组、已处理归档和活跃上限；Runner 只读取其中受限的 advisory 内容；
+│   │   └── ledger.jsonl                                    # 以每行一个 JSON 对象保存未压缩原始事件；压缩成功后按批次移入 archive/；
 │   ├── scripts/                                            # 新 Skill 仓库的根级验证入口目录；
-│   │   ├── check_secrets.py                                # 扫描生成仓库中的常见凭据和敏感值；
-│   │   └── validate.py                                     # 查找唯一 Skill 并调用其仓库验证器；
+│   │   ├── check_secrets.py                                # 扫描生成仓库当前文本文件，忽略运行产物，只输出脱敏后的命中位置和规则名；
+│   │   └── validate.py                                     # 确认 .agents/skills/ 下只有一个 Skill，再把参数原样交给 validate_repo.py；
 │   ├── tests/                                              # 新 Skill 仓库的默认测试目录；
-│   │   └── test_runtime.py                                 # 验证草稿工作流、核心锁、Schema 和脱敏器；
-│   ├── .gitignore                                          # 排除凭据、运行状态、虚拟环境和本地报告；
-│   ├── .gitleaks.toml                                      # 启用 Gitleaks 默认规则扫描完整历史；
-│   ├── .pre-commit-config.yaml                             # 在提交前运行仓库验证和敏感信息扫描；
-│   ├── AGENTS.md.tmpl                                      # 生成仓库中的长期 Agent 维护规则模板；
-│   ├── CHANGELOG.md.tmpl                                   # 新 Skill 的初始变更记录模板；
-│   ├── README.md.tmpl                                      # 新 Skill 仓库的使用和维护说明模板；
-│   ├── SECURITY.md.tmpl                                    # 新 Skill 仓库的安全边界和响应说明模板；
-│   └── VERSION                                             # 新 Skill 仓库的初始语义版本号；
+│   │   └── test_runtime.py                                 # 验证草稿图、核心锁、Schema 拒绝未知字段，以及脱敏器移除邮箱、URL 和长编号；
+│   ├── .gitignore                                          # 阻止环境文件、私钥、Cookie、会话、.runtime/、虚拟环境和扫描报告进入 Git；
+│   ├── .gitleaks.toml                                      # 继承 Gitleaks 内置规则，使 CI 能扫描当前内容和完整历史中的凭据；
+│   ├── .pre-commit-config.yaml                             # 注册本地 validate-skill 与 check-sensitive-data 两个提交前钩子；
+│   ├── AGENTS.md.tmpl                                      # 写入仓库级长期约束，包括稳定核心、执行顺序、学习边界和必跑检查；
+│   ├── CHANGELOG.md.tmpl                                   # 创建 0.1.0 Unreleased 条目，供领域配置和后续发布持续记录；
+│   ├── README.md.tmpl                                      # 指导维护者配置草稿、冻结核心、启动 Runner、推进状态和记录学习；
+│   ├── SECURITY.md.tmpl                                    # 禁止提交凭据和会话，说明登录归用户完成，并声明核心锁与确认机制的真实边界；
+│   └── VERSION                                             # 写入新 Skill 初始版本 0.1.0；冻结核心时该值进入哈希清单；
 ├── tests/                                                  # 模板工厂的端到端回归测试目录；
-│   └── test_template_runtime.py                            # 覆盖生成、Runner、回退、核心锁、学习和安全扫描；
-├── .editorconfig                                           # 统一编辑器字符集、缩进和换行规则；
-├── .gitignore                                              # 排除模板工厂的本地环境、凭据和运行产物；
-├── .gitleaks.toml                                          # 配置模板工厂的 Gitleaks 敏感信息扫描；
-├── .pre-commit-config.yaml                                 # 配置模板验证和敏感信息提交前检查；
-├── AGENTS.md                                               # 约束模板工厂维护方式和不可破坏的运行不变量；
-├── CHANGELOG.md                                            # 记录模板框架各版本的新增、变更和移除内容；
-├── CONTRIBUTING.md                                         # 说明修改模板时需要提供的测试和版本证据；
-├── README.md                                               # 面向使用者说明模板目标、架构、结构和使用方法；
-├── SECURITY.md                                             # 说明模板工厂的安全策略和凭据响应流程；
-└── VERSION                                                 # 当前模板工厂的语义版本号；
+│   └── test_template_runtime.py                            # 生成临时仓库并覆盖草稿拒绝、脚本执行、禁止跳步、重试回退、确认、学习压缩和扫描绕过；
+├── .editorconfig                                           # 要求 UTF-8、LF、文件末尾换行，并为 Python、JSON、YAML 和 Markdown 统一缩进；
+├── .gitignore                                              # 阻止凭据目录、会话、.runtime/、虚拟环境、缓存和本地报告进入模板历史；
+├── .gitleaks.toml                                          # 继承 Gitleaks 默认检测规则，供本地或 CI 检查模板完整 Git 历史；
+├── .pre-commit-config.yaml                                 # 在提交前调用模板生成验证和按文件敏感信息扫描，失败时阻止提交；
+├── AGENTS.md                                               # 向维护 Agent 声明单模板边界、必跑命令、运行不变量、学习不变量和安全禁令；
+├── CHANGELOG.md                                            # 按版本记录架构变更；保留 v0.1 catalog 设计与 v0.2 Runtime 重构的历史；
+├── CONTRIBUTING.md                                         # 要求每次模板变更说明不变量、补充成功与失败测试、评估 SemVer 并更新变更记录；
+├── README.md                                               # 面向人类维护者解释设计原因、Runtime 流程、全部文件职责和新仓库生成方法；
+├── SECURITY.md                                             # 记录敏感信息禁令、运行时防线、Gitleaks 层级、核心锁限制和泄漏响应步骤；
+└── VERSION                                                 # 记录模板工厂当前版本 0.2.0；用于发布、标签和迁移判断；
 ```
 
-</details>
-
-<details>
-<summary><strong>生成后的单 Skill 仓库：my-skill</strong></summary>
+### 生成后的单 Skill 仓库：my-skill
 
 ```text
 my-skill/                                                   # 一个可以独立测试、发布和回滚的 Skill 仓库根目录；
@@ -197,63 +193,58 @@ my-skill/                                                   # 一个可以独立
 │   └── skills/                                             # Skill 定义目录；此仓库只包含一个子目录；
 │       └── my-skill/                                       # 当前 Skill 的稳定核心目录；
 │           ├── agents/                                     # Agent 产品界面和调用提示元数据目录；
-│           │   └── openai.yaml                             # 当前生成器提供的 OpenAI/Codex 界面元数据；
+│           │   └── openai.yaml                             # 保存显示名称、短描述和默认调用提示；支持该格式的 Agent 产品读取它展示 Skill；
 │           ├── schemas/                                    # 节点和最终结果的 JSON 数据契约目录；
-│           │   ├── input.schema.json                       # 初始入口输入 Schema；领域配置时需要替换；
-│           │   └── output.schema.json                      # 最终结果输出 Schema；领域配置时需要替换；
+│           │   ├── input.schema.json                       # 限定首次 start 接收的数据字段与类型；草稿只收 request，领域配置时必须收窄；
+│           │   └── output.schema.json                      # 限定 completed 状态允许交付的数据结构；草稿只允许 not-configured 结果；
 │           ├── scripts/                                    # Skill 自带的确定性运行时脚本目录；
-│           │   ├── compact.py                              # 归档学习事件并重建受限活跃规则；
-│           │   ├── freeze_core.py                          # 创建或检查 .core-lock.json；
-│           │   ├── learn.py                                # 从一个运行状态记录一条脱敏学习事件；
-│           │   ├── promote.py                              # 创建待人工审查的核心晋升提案；
-│           │   ├── runner.py                               # 执行节点状态机并返回下一项允许动作；
-│           │   ├── runtime_lib.py                          # 为所有运行时脚本提供公共确定性函数；
-│           │   └── validate_repo.py                        # 验证 Skill 工作流、学习状态和核心锁；
-│           ├── SKILL.md                                    # 声明触发范围、执行协议、边界和学习要求；
-│           └── workflow.yaml                               # 声明入口、节点、执行器、边和全局限制；
+│           │   ├── compact.py                              # 达到阈值时先无损写入内容寻址归档，再合并计数、限制活跃规则并清理已归档账本；
+│           │   ├── freeze_core.py                          # 将稳定核心文件路径、版本和 SHA-256 写入 .core-lock.json，或只读检查漂移；
+│           │   ├── learn.py                                # 只接受完成、失败或用户暂停状态；脱敏一句经验并阻止同一状态重复记账；
+│           │   ├── promote.py                              # 将高支持规则写成待审提案，并列出反例、测试、版本、人工批准和重新冻结门槛；
+│           │   ├── runner.py                               # 唯一流程控制入口；创建状态、执行 script、暂停外部节点并验证每次提交结果；
+│           │   ├── runtime_lib.py                          # 实现原子 JSON 写入、安全相对路径、Schema 子集、图验证、状态存取和核心哈希；
+│           │   └── validate_repo.py                        # 一次性汇总检查 Skill 元数据、工作流图、学习文件、活动规则上限和核心锁；
+│           ├── SKILL.md                                    # 告诉 Agent 何时触发该 Skill、如何调用 Runner、怎样提交外部结果和记录学习；
+│           └── workflow.yaml                               # Skill 的执行事实来源；固定入口节点、执行器、Schema、超时、重试、回退和完成边；
 ├── .github/                                                # 当前 Skill 的 GitHub 自动化配置目录；
-│   ├── dependabot.yml                                      # 跟踪 GitHub Actions 依赖更新；
+│   ├── dependabot.yml                                      # 每周读取 workflow 中的 Actions 引用并创建依赖升级 PR，不直接修改运行核心；
 │   └── workflows/                                          # 当前 Skill 的 CI 工作流目录；
-│       └── validate.yml                                    # 运行仓库验证、测试和完整历史扫描；
+│       └── validate.yml                                    # 在 PR 和 main 推送时检查 configured 状态、核心锁、测试、工作区敏感值和全部提交历史；
 ├── learning/                                               # 当前 Skill 的受控成长数据目录；
 │   ├── archive/                                            # 无损保存已处理批次的完整原始事件；
-│   │   └── .gitkeep                                        # 保留初始空目录；产生归档后继续保留；
+│   │   └── .gitkeep                                        # 初始空占位；确保 archive/ 在首个达到配置阈值的批次产生前已经受 Git 管理；
 │   ├── proposals/                                          # 保存尚未进入稳定核心的晋升提案；
-│   │   └── .gitkeep                                        # 保留初始空目录；产生提案后继续保留；
-│   ├── active-rules.json                                   # 保存注入后续节点的有限 advisory 规则；
-│   └── ledger.jsonl                                        # 保存当前尚未压缩的逐次运行经验；
+│   │   └── .gitkeep                                        # 初始空占位；确保 proposals/ 在首个晋升建议产生前已经受 Git 管理；
+│   ├── active-rules.json                                   # 保存压缩后的有限规则、正负支持计数和已处理归档；Runner 将其作为 advisory 注入；
+│   └── ledger.jsonl                                        # 每次运行追加一个脱敏 JSON 事件；达到阈值并成功归档后移除对应热数据；
 ├── scripts/                                                # 面向维护者和 CI 的根级命令目录；
-│   ├── check_secrets.py                                    # 扫描仓库当前文件中的常见敏感值；
-│   └── validate.py                                         # 调用唯一 Skill 的 validate_repo.py；
+│   ├── check_secrets.py                                    # 遍历当前文本文件并匹配常见 Token、访问密钥和私钥头；输出始终隐藏实际值；
+│   └── validate.py                                         # 校验仓库恰有一个 Skill，并把 --allow-draft 或 --ignore-core-lock 传给内部验证器；
 ├── tests/                                                  # 当前 Skill 的测试目录；领域测试应继续添加到这里；
-│   └── test_runtime.py                                     # 生成时附带的基础运行时契约测试；
-├── .core-lock.json                                         # 记录稳定核心文件路径、版本和 SHA-256 哈希；
-├── .gitignore                                              # 排除凭据、.runtime/、虚拟环境和本地报告；
-├── .gitleaks.toml                                          # 配置 Gitleaks 默认规则和完整历史扫描；
-├── .pre-commit-config.yaml                                 # 在本地提交前运行验证和敏感信息检查；
-├── AGENTS.md                                               # 约束 Agent 和维护者对该 Skill 仓库的操作；
-├── CHANGELOG.md                                            # 记录该 Skill 各版本的用户可见变化；
-├── README.md                                               # 说明该 Skill 的配置、运行、学习和维护方法；
-├── SECURITY.md                                             # 说明敏感信息、确认边界和凭据响应流程；
-└── VERSION                                                 # 记录该 Skill 当前语义版本号；
+│   └── test_runtime.py                                     # 初始验证图结构、锁清单、Schema 拒绝未知字段和学习脱敏；领域作者继续增加成功与失败案例；
+├── .core-lock.json                                         # Runner 每次启动和恢复前比较的稳定核心快照；检测未冻结的脚本、Schema 或工作流修改；
+├── .gitignore                                              # 排除环境变量文件、密钥、Cookie、会话、.runtime/、虚拟环境、缓存和扫描报告；
+├── .gitleaks.toml                                          # 让 Gitleaks 在 CI 中使用内置规则扫描所有提交，同时由当前仓库维护额外配置；
+├── .pre-commit-config.yaml                                 # 在开发者提交前先执行完整仓库验证，再对本次文件运行脱敏敏感信息扫描；
+├── AGENTS.md                                               # 长期约束 Agent 的节点顺序、核心修改流程、学习写入范围、确认要求和必跑检查；
+├── CHANGELOG.md                                            # 按语义版本记录触发边界、输入输出、权限、节点和实现的用户可见变化；
+├── README.md                                               # 提供该具体 Skill 的领域说明、配置步骤、启动命令、状态推进和学习操作；
+├── SECURITY.md                                             # 声明禁止进入 Git 的数据、登录责任、用户确认要求、核心锁局限和凭据泄漏响应；
+└── VERSION                                                 # 当前 Skill 的语义版本；核心冻结时写入清单，发布标签应与它保持一致；
 ```
 
-</details>
-
-<details>
-<summary><strong>领域需要时添加的可选目录</strong></summary>
+### 领域需要时添加的可选目录
 
 ```text
 .agents/skills/my-skill/                                    # 当前 Skill 的稳定核心目录；
-├── executors/                                              # 保存领域专用的确定性节点执行脚本；
-├── validators/                                             # 保存 Schema 无法表达的确定性业务验证器；
-├── references/                                             # 保存推理节点按需读取的稳定领域参考资料；
-└── assets/                                                 # 保存模板、静态资源或交付所需的非代码素材；
+├── executors/                                              # 保存领域专用 script 节点实现；每个脚本应使用结构化输入输出并拥有对应测试；
+├── validators/                                             # 保存跨字段、跨节点或业务语义检查程序；退出码决定节点结果是否可接受；
+├── references/                                             # 保存推理节点明确引用的稳定知识；只按任务需要加载，避免全部进入上下文；
+└── assets/                                                 # 保存交付模板、固定图片或静态资源；不得存放凭据、会话或未经脱敏的用户数据；
 ```
 
 这些目录不由生成器预先创建；领域工作流确实需要时再添加，并在对应节点、测试和维护文档中声明用途；
-
-</details>
 
 ## 创建独立 Skill 仓库
 
