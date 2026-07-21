@@ -1,0 +1,39 @@
+{
+  "ir_version": 1,
+  "skill_name": "__SKILL_NAME__",
+  "configured": false,
+  "entry_node": "configure-domain-workflow",
+  "limits": {
+    "max_nodes": 16,
+    "total_timeout_seconds": 1800
+  },
+  "learning": {
+    "compact_every": 32,
+    "active_rule_limit": 16
+  },
+  "nodes": [
+    {
+      "id": "configure-domain-workflow",
+      "input_schema": "schemas/input.schema.json",
+      "output_schema": "schemas/output.schema.json",
+      "executor": "reasoning",
+      "action": {
+        "name": "replace-before-use",
+        "arguments": {},
+        "instructions": "Replace this draft node with the smallest domain-specific graph. The runner refuses to execute while configured=false."
+      },
+      "side_effect": "none",
+      "requires_confirmation": false,
+      "timeout_seconds": 60,
+      "max_retries": 0,
+      "validator": null,
+      "fallback": null,
+      "on_success": "__complete__",
+      "stop_conditions": [
+        "Stop because this repository has not been configured for a real domain."
+      ]
+    }
+  ],
+  "final_output_schema": "schemas/output.schema.json",
+  "final_validator": null
+}

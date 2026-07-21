@@ -1,0 +1,18 @@
+# Security policy
+
+Never commit credentials, tokens, passwords, cookies, browser profiles, session exports, private keys, personal information, addresses, order histories, private messages, or unredacted runtime artifacts.
+
+Use placeholders such as `${SERVICE_TOKEN}`. Keep authentication in the user's authorized tool or browser session. Login, CAPTCHA, QR code, and two-factor authentication are completed by the user.
+
+Before each push, run the local scanner. If Gitleaks is installed locally, run the second command too:
+
+```bash
+python3 scripts/check_secrets.py
+gitleaks git --redact
+```
+
+Enable remote secret scanning and push protection. If a secret is exposed, revoke or rotate it before rewriting history; deleting the current line does not make the credential safe.
+
+CI fetches complete Git history and runs a checksum-pinned Gitleaks release against `--all`.
+
+`.core-lock.json` detects drift but does not prove authorship. Use reviewed commits, branch protection, and signed releases when appropriate. The host must invoke `runner.py approve` only after receiving real user confirmation.

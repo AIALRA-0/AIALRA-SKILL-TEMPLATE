@@ -16,10 +16,8 @@ sessions/
 cookies/
 browser-profile/
 
-# Local and generated evaluation state
-drafts/*
-!drafts/.gitkeep
-eval-workspaces/
+# Local and generated validation state
+.runtime/
 reports/
 *.sarif
 

@@ -1,4 +1,4 @@
-name: Validate Skill template
+name: Validate Skill
 
 on:
   pull_request:
@@ -16,13 +16,11 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - name: Show Python version
-        run: python3 --version
-      - name: Validate universal template
-        run: python3 scripts/validate_template.py
-      - name: Run runtime and generator tests
+      - name: Validate workflow and core lock
+        run: python3 scripts/validate.py
+      - name: Run tests
         run: python3 -m unittest discover -s tests -v
-      - name: Scan working tree for sensitive data
+      - name: Scan for sensitive data
         run: python3 scripts/check_secrets.py
       - name: Install pinned Gitleaks
         env:

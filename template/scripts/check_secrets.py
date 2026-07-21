@@ -39,7 +39,6 @@ IGNORED_PARTS = {
     "__pycache__",
     ".pytest_cache",
     ".runtime",
-    "eval-workspaces",
     "reports",
 }
 PLACEHOLDER_MARKERS = (

@@ -1,93 +1,110 @@
-# Codex Skill Framework
+# Graph-Driven Codex Skill Template
 
-一个面向长期维护的 Codex Skill 仓库模板。它把可被 Codex 加载的运行时文件与设计、评测、版本和安全控制分开，避免把每个 Skill 做成同一种空泛模板。
+一个通用的、可执行的 Codex Skill 仓库模板。它统一的不是领域内容，而是每个 Skill 必须遵循的运行协议：图驱动工作流、结构化输入输出、确定性执行、失败回退、最终验证、受控学习和独立 Git 版本。
 
-## 设计结论
+## 核心模型
 
-- 每个 Skill 只完成一个连贯任务；如果需要两套独立触发条件或两种不同输出，应拆成两个 Skill。
-- 每个 Skill 必须选择一个主 profile：`research`、`tool-integration`、`artifact-production` 或 `operational-workflow`。不提供无约束的 `generic` profile。
-- `.agents/skills/<name>/` 是运行平面，只保留 `SKILL.md`、`agents/openai.yaml` 和真正需要的 `scripts/`、`references/`、`assets/`。
-- `catalog/<name>.json` 是控制平面的单一设计源。不要直接编辑生成的 `SKILL.md`；更新 catalog 后重新生成。
-- `evals/<name>/` 存放触发测试和任务质量测试，不随 Skill 运行时内容一起分发。
-- Skill 的版本放在 catalog，不放进 Codex 的 `SKILL.md` frontmatter；frontmatter 只使用 `name` 与 `description`。
-- 任何令牌、Cookie、密码、私钥、真实个人资料或含敏感信息的浏览器文件都不得进入 Git。
-
-## 仓库结构
+每个 Skill 都是一个独立 Git 仓库，由本模板生成。仓库中只有一个 Skill，不使用 catalog，也不使用多 profile。
 
 ```text
-.
-├── .agents/skills/              # 可被 Codex 发现的生成结果
-├── catalog/                     # 每个 Skill 的设计规范与版本
-├── evals/                       # 触发与输出质量评测
-├── templates/profiles/          # 四种非泛化模板
-├── schemas/                     # catalog JSON Schema
-├── scripts/                     # 生成、验证、密钥扫描
-├── tests/                       # 框架自身测试
-├── docs/                        # 仓库级架构与维护说明
-├── AGENTS.md                    # Codex 在本仓库必须遵循的规则
-├── SECURITY.md                  # 敏感信息政策与泄露处理
-└── .github/workflows/           # 最小权限 CI
+用户请求
+   ↓
+输入 Schema
+   ↓
+Runner 读取 workflow.yaml
+   ↓
+节点执行 → 节点输出 Schema → Validator
+   ↓              ↘ retry / fallback / wait-user / stop
+最终 Schema + Final Validator
+   ↓
+交付结果
+   ↓
+一条脱敏经验或教训 → ledger → archive + bounded active rules
 ```
 
-## 快速开始
+Agent 不能自行决定下一个节点。Runner 保存状态、控制顺序、限制重试和总时长、执行脚本节点、阻止未经确认的写操作，并验证每个节点和最终输出。
 
-1. 从示例复制一个设计规范：
+## 执行器优先级
 
-   ```bash
-   cp examples/research-skill.spec.json drafts/my-skill.json
-   ```
+1. `script`：固定、重复、可计算的机械操作，由 Runner 直接执行。
+2. `mcp`：使用明确工具和参数 Schema，不额外套脆弱脚本。
+3. `browser-dom`：API/MCP 不足时使用结构化页面操作。
+4. `computer-use`：只有无法结构化操作时使用；登录和验证码由用户完成。
+5. `reasoning`：只用于无法脚本化的语义判断，仍必须返回 Schema 合规 JSON。
 
-2. 填写所有领域信息，尤其是正向触发、近邻反例、非目标、工作流、失败边界和验证标准。
+## 单 Skill 仓库结构
 
-3. 生成新 Skill：
+```text
+my-skill/
+├── .git/
+├── .core-lock.json
+├── AGENTS.md
+├── VERSION
+├── .agents/skills/my-skill/
+│   ├── SKILL.md
+│   ├── workflow.yaml
+│   ├── agents/openai.yaml
+│   ├── schemas/
+│   └── scripts/
+│       ├── runner.py
+│       ├── runtime_lib.py
+│       ├── learn.py
+│       ├── compact.py
+│       ├── promote.py
+│       ├── freeze_core.py
+│       └── validate_repo.py
+├── learning/
+│   ├── ledger.jsonl
+│   ├── active-rules.json
+│   ├── archive/
+│   └── proposals/
+├── scripts/
+├── tests/
+└── .github/workflows/validate.yml
+```
 
-   ```bash
-   python3 scripts/new_skill.py --spec drafts/my-skill.json
-   ```
+领域需要时才添加 `executors/`、`validators/`、`references/` 或 `assets/`，不预先制造空目录和文档。
 
-4. 添加 catalog 中声明的真实资源文件，然后验证：
+## 创建独立 Skill 仓库
 
-   ```bash
-   python3 scripts/validate_repo.py
-   python3 -m unittest discover -s tests -v
-   python3 scripts/check_secrets.py
-   ```
+```bash
+python3 scripts/create_skill_repo.py \
+  --name shopping-price-research \
+  --output ../shopping-price-research \
+  --display-name "Shopping Price Research" \
+  --short-description "Compare live prices with verified evidence" \
+  --description "Research current product offers with direct evidence. Use when the user asks for live price comparison or link verification. Do not use for purchasing actions or historical-price prediction." \
+  --default-prompt 'Use $shopping-price-research to compare current offers for this exact product.'
+```
 
-5. 更新已有 Skill：
+生成器会：
 
-   ```bash
-   python3 scripts/new_skill.py --spec catalog/my-skill.json --update
-   ```
+- 优先调用 Codex 内置 `skill-creator` 官方初始化器；
+- 创建新的独立 Git 仓库；
+- 写入统一 Runner、学习系统、安全策略、测试和 CI；
+- 生成核心 SHA-256 锁；
+- 让工作流保持 `configured=false`，在领域图和回归测试完成前拒绝运行。
 
-生成器会优先调用本机 Codex 内置 `skill-creator` 的官方初始化脚本；CI 或其他没有该脚本的环境使用等价的可移植初始化路径。两条路径最后都由同一渲染器生成确定性的 `SKILL.md` 与 `agents/openai.yaml`。
+## 固化与成长
 
-## Profile 选择
+稳定核心包括工作流、Schema、脚本、验证器、Skill 指令、安全策略和强制执行文件。`.core-lock.json` 记录它们的哈希；任何未登记变更都会让 Runner 硬停止。
 
-| Profile | 适合 | 强制回答的问题 |
-|---|---|---|
-| `research` | 实时调查、资料核验、价格/政策/市场研究 | 来源优先级、时效、证据字段、冲突处理 |
-| `tool-integration` | MCP、API、浏览器、登录态工作流 | 能力边界、认证、读写副作用、确认点、降级路径 |
-| `artifact-production` | 文档、表格、演示、PDF、图片、代码制品 | 输入检查、生成方式、渲染/运行验证、交付标准 |
-| `operational-workflow` | 发布、迁移、审查、修复、运维流程 | 前置条件、阶段门、回滚、完成定义 |
+每次执行后只记录一条脱敏、限定 scope 的经验或教训。默认累计 32 条时：
 
-如果一个 Skill 同时需要两列中互不依赖的完整流程，优先拆分，并让 `AGENTS.md` 在适当时机编排它们。
+- 原始事件完整移动到 `learning/archive/`，不依赖“已经提交到 Git”才保留；
+- 重复规则被确定性合并，保留正负计数和事件哈希；
+- 活跃规则最多 16 条，即活跃上下文减半；
+- 未进入活跃集合的事件仍在归档和 Git 历史中，不丢失；
+- 学习规则只能作为 advisory，不能改变流程、权限或安全边界。
 
-## 质量门槛
+晋升到核心只生成 proposal，不自动修改核心。至少需要 3 个独立支持案例，或一次用户确认的严重安全事件，并完成反例审查、回归测试、版本变更、人工批准和重新冻结。
 
-- 名称必须是 1–64 个小写字母、数字和连字符，且目录名一致。
-- `description` 必须说明“做什么、何时使用、边界是什么”，并通过近邻反例测试。
-- `SKILL.md` 少于 500 行，引用只保持一层深度。
-- `agents/openai.yaml` 的默认提示必须显式包含 `$skill-name`。
-- `candidate` 与 `stable` Skill 至少要有 8 个正向和 8 个近邻负向触发样例。
-- 资源只在确实复用、能降低错误率时加入；重复且确定的机械步骤才进入脚本。
-- 发布前必须通过结构验证、单元测试、敏感信息扫描和人工评测记录。
+## 验证模板自身
 
-更详细的设计见 [docs/architecture.md](docs/architecture.md)，维护与版本策略见 [docs/maintenance.md](docs/maintenance.md)，调查依据见 [docs/research-notes.md](docs/research-notes.md)。
+```bash
+python3 scripts/validate_template.py
+python3 -m unittest discover -s tests -v
+python3 scripts/check_secrets.py
+```
 
-## Git 与发布建议
-
-- 初期使用私有仓库；确认没有内部信息后再决定是否公开。
-- 开启 GitHub Secret Protection / push protection；本仓库的本地扫描只能作为第一道防线。
-- CI 中第三方 Action 使用完整 commit SHA；Dependabot 负责提出升级 PR。
-- 仓库版本使用 SemVer。单个 Skill 也在 catalog 中独立使用 SemVer。
-- 公开分发前再选择许可证；没有明确许可证时，不要假设他人可以复制或再分发。
+详细协议见 [docs/architecture.md](docs/architecture.md)，学习机制见 [docs/learning.md](docs/learning.md)，从 v0.1 迁移见 [docs/migration-v0.2.md](docs/migration-v0.2.md)。

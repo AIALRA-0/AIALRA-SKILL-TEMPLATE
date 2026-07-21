@@ -1,0 +1,41 @@
+# __DISPLAY_NAME__
+
+Independent Git repository for the `$__SKILL_NAME__` Codex Skill.
+
+The repository starts in a safe draft state. The runner will refuse to execute until `workflow.yaml` contains a domain-specific graph and `configured` is set to `true` after tests.
+
+## Configure the Skill
+
+1. Define the smallest supported intent and adjacent non-intents in `SKILL.md`.
+2. Replace the draft graph in `.agents/skills/__SKILL_NAME__/workflow.yaml`.
+3. Add exact input/output schemas for every node.
+4. Add deterministic executors and validators only when required.
+5. Run:
+
+   ```bash
+   python3 scripts/validate.py --allow-draft --ignore-core-lock
+   python3 -m unittest discover -s tests -v
+   python3 scripts/check_secrets.py
+   ```
+
+6. Set `configured=true`, add domain regression tests, bump `VERSION`, and freeze core:
+
+   ```bash
+   python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py
+   python3 scripts/validate.py
+   ```
+
+## Run
+
+Create input JSON matching the entry node schema, then:
+
+```bash
+python3 .agents/skills/__SKILL_NAME__/scripts/runner.py start --input input.json
+python3 .agents/skills/__SKILL_NAME__/scripts/runner.py advance --state-id <state-id>
+```
+
+Follow only the directive returned by the runner.
+
+## Learning
+
+Each completed or user-paused execution produces one sanitized learning event. Every 32 events, raw events move to a lossless archive and active advisory rules are bounded to 16. Promotion never changes core automatically.

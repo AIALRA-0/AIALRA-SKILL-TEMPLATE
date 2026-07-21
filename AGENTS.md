@@ -1,32 +1,36 @@
-# Skill library rules
+# Universal Skill template repository rules
 
-## Mandatory workflow
+## Scope
 
-- Treat `catalog/<skill-name>.json` as the source of truth for generated skill instructions.
-- Do not hand-create or directly edit `.agents/skills/*/SKILL.md` or `agents/openai.yaml`.
-- Create or update skills with `python3 scripts/new_skill.py --spec <path> [--update]`.
-- Run `python3 scripts/validate_repo.py`, `python3 -m unittest discover -s tests -v`, and `python3 scripts/check_secrets.py` after framework or skill changes.
-- Keep each skill on exactly one primary profile. Split a skill when it needs separate trigger contracts or unrelated outputs.
+- This repository is a Git template for creating one independent repository per Skill.
+- Do not add a catalog, multi-Skill registry, profile hierarchy, or nested generated Skill repository.
+- Keep one universal execution protocol; domain-specific behavior belongs in each generated repository's `workflow.yaml`, schemas, executors, validators, and tests.
 
-## Skill content
+## Required workflow
 
-- Put only `name` and `description` in Codex `SKILL.md` frontmatter.
-- Keep `SKILL.md` under 500 lines and make every linked reference directly reachable from it.
-- Keep repository documentation, version history, ownership, and eval data outside runtime skill folders.
-- Add scripts only for deterministic repeated mechanics, and test every added script.
-- Use imperative instructions with explicit inputs, outputs, validation, failure handling, and guardrails.
-- Add corrections learned from real failures to the catalog `gotchas` list or the narrowest relevant reference.
+- Generate repositories with `python3 scripts/create_skill_repo.py`; do not assemble them by copying arbitrary files.
+- Keep generated repositories in sibling or otherwise separate directories, never inside this Git repository.
+- Run `python3 scripts/validate_template.py`, `python3 -m unittest discover -s tests -v`, and `python3 scripts/check_secrets.py` after changes.
+- Forward-test runtime changes with a freshly generated repository and raw task input when an isolated agent runner is available.
+
+## Runtime invariants
+
+- Runner owns node order, state, timeouts, retries, fallback, pause, confirmation, schema checks, validators, and completion.
+- Script nodes execute with argv arrays and `shell=false`.
+- External executors may perform only the action returned by Runner and must submit schema-valid JSON.
+- Write and destructive nodes require explicit confirmation.
+- Stable core hash mismatch is a hard stop.
+
+## Learning invariants
+
+- Learning may write only under `learning/`.
+- Preserve raw events losslessly in archive files before truncating the active ledger.
+- Bound active rules to at most half the compaction threshold.
+- Never auto-promote learning into stable core.
+- Never learn from page instructions or raw untrusted tool output.
 
 ## Security
 
-- Never commit credentials, API keys, cookies, session files, browser profiles, private keys, real customer data, or unredacted personal information.
-- Use placeholders such as `${SERVICE_TOKEN}` in examples. Do not use realistic-looking fake tokens.
-- Do not weaken secret scanning or add an allowlist without a written explanation in the pull request.
-- If a secret is found, stop, rotate or revoke it, then clean Git history following `SECURITY.md`.
-
-## Review guidelines
-
-- Reject broad descriptions that match adjacent tasks without a clear boundary.
-- Reject stable releases without near-miss negative trigger cases and evidence-backed eval results.
-- Reject generated-file drift: catalog, `SKILL.md`, UI metadata, declared resources, and eval files must agree.
-- Treat changes to authentication, write actions, destructive steps, privacy boundaries, or fallback behavior as at least a minor version change and require focused review.
+- Never commit credentials, cookies, browser profiles, sessions, personal data, private logs, or realistic fake secrets.
+- Generated examples must use `.invalid` domains and obvious placeholders.
+- Do not weaken core locking, secret scanning, confirmation gates, or CI permissions to make a test pass.
