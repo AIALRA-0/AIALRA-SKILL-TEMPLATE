@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1] - 2026-07-21
+
+### Changed
+
+- Explained side-effect values, argv arrays, `shell=false`, stop conditions, Runner states, external executors, and external result submission in plain language.
+- Added a five-part documentation contract covering definition, purpose, exact shape, responsible actor, and failure behavior.
+
 ## [0.3.0] - 2026-07-21
 
 ### Changed

@@ -13,6 +13,14 @@
 - Run `python3 scripts/validate_template.py`, `python3 -m unittest discover -s tests -v`, and `python3 scripts/check_secrets.py` after changes.
 - Forward-test runtime changes with a freshly generated repository and raw task input when an isolated agent runner is available.
 
+## 文档可读性约束
+
+- 面向维护者的文档使用简体中文，字段名和命令保留其真实英文标识符。
+- 技术术语首次出现时必须同时说明五项内容：它是什么、它解决什么问题、它长什么样、谁负责操作、失败或越界时发生什么。
+- 配置字段必须给出完整路径、数据类型、允许值和最小示例；状态命令必须说明调用前提、执行效果和错误调用的结果。
+- 明确区分由 Agent 或外部执行器判断的文字协议，以及由 Runner、Schema 或 validator 强制执行的机器规则。
+- 提交前逐项确认目标读者无需查阅源代码即可回答“是什么、为什么、怎么写、谁来做、失败怎么办”。
+
 ## Runtime invariants
 
 - Runner owns node order, state, timeouts, retries, fallback, pause, confirmation, schema checks, validators, and completion.

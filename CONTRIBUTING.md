@@ -10,5 +10,6 @@ Required evidence:
 4. Confirmation that stable core mutation is detected.
 5. Confirmation that learning changes cannot modify core or lose archived events.
 6. SemVer impact and changelog entry.
+7. Documentation evidence covering definition, purpose, exact shape, responsible actor, and failure behavior for every new technical term or protocol field.
 
 Run all repository checks before committing. Do not place generated repositories inside this template repository.

@@ -165,7 +165,7 @@ AIALRA-SKILL-TEMPLATE/                                      # 模板工厂仓库
 │   ├── .gitignore                                          # 阻止环境文件、私钥、Cookie、会话、.runtime/、虚拟环境和扫描报告进入 Git；
 │   ├── .gitleaks.toml                                      # 继承 Gitleaks 内置规则，使 CI 能扫描当前内容和完整历史中的凭据；
 │   ├── .pre-commit-config.yaml                             # 注册本地 validate-skill 与 check-sensitive-data 两个提交前钩子；
-│   ├── AGENTS.md.tmpl                                      # 写入仓库级长期约束，包括稳定核心、执行顺序、学习边界和必跑检查；
+│   ├── AGENTS.md.tmpl                                      # 写入仓库级长期约束，包括稳定核心、执行顺序、学习边界、文档可读性和必跑检查；
 │   ├── CHANGELOG.md.tmpl                                   # 创建 0.1.0 Unreleased 条目，供领域配置和后续发布持续记录；
 │   ├── README.md.tmpl                                      # 指导维护者配置草稿、冻结核心、启动 Runner、推进状态和记录学习；
 │   ├── SECURITY.md.tmpl                                    # 禁止提交凭据和会话，说明登录归用户完成，并声明核心锁与确认机制的真实边界；
@@ -176,12 +176,12 @@ AIALRA-SKILL-TEMPLATE/                                      # 模板工厂仓库
 ├── .gitignore                                              # 阻止凭据目录、会话、.runtime/、虚拟环境、缓存和本地报告进入模板历史；
 ├── .gitleaks.toml                                          # 继承 Gitleaks 默认检测规则，供本地或 CI 检查模板完整 Git 历史；
 ├── .pre-commit-config.yaml                                 # 在提交前调用模板生成验证和按文件敏感信息扫描，失败时阻止提交；
-├── AGENTS.md                                               # 向维护 Agent 声明单模板边界、必跑命令、运行不变量、学习不变量和安全禁令；
+├── AGENTS.md                                               # 向维护 Agent 声明单模板边界、必跑命令、运行不变量、文档可读性、学习不变量和安全禁令；
 ├── CHANGELOG.md                                            # 按版本记录架构变更；保留 v0.1 catalog 设计与 v0.2 Runtime 重构的历史；
 ├── CONTRIBUTING.md                                         # 要求每次模板变更说明不变量、补充成功与失败测试、评估 SemVer 并更新变更记录；
 ├── README.md                                               # 面向人类维护者解释设计原因、Runtime 流程、全部文件职责和新仓库生成方法；
 ├── SECURITY.md                                             # 记录敏感信息禁令、运行时防线、Gitleaks 层级、核心锁限制和泄漏响应步骤；
-└── VERSION                                                 # 记录模板工厂当前版本 0.3.0；用于发布、标签和迁移判断；
+└── VERSION                                                 # 记录模板工厂当前版本 0.3.1；用于发布、标签和迁移判断；
 ```
 
 ### 生成后的单 Skill 仓库：my-skill
@@ -227,7 +227,7 @@ my-skill/                                                   # 一个可以独立
 ├── .gitignore                                              # 排除环境变量文件、密钥、Cookie、会话、.runtime/、虚拟环境、缓存和扫描报告；
 ├── .gitleaks.toml                                          # 让 Gitleaks 在 CI 中使用内置规则扫描所有提交，同时由当前仓库维护额外配置；
 ├── .pre-commit-config.yaml                                 # 在开发者提交前先执行完整仓库验证，再对本次文件运行脱敏敏感信息扫描；
-├── AGENTS.md                                               # 长期约束 Agent 的节点顺序、核心修改流程、学习写入范围、确认要求和必跑检查；
+├── AGENTS.md                                               # 长期约束 Agent 的节点顺序、核心修改流程、文档可读性、学习写入范围、确认要求和必跑检查；
 ├── CHANGELOG.md                                            # 按语义版本记录触发边界、输入输出、权限、节点和实现的用户可见变化；
 ├── README.md                                               # 提供该具体 Skill 的领域说明、配置步骤、启动命令、状态推进和学习操作；
 ├── SECURITY.md                                             # 声明禁止进入 Git 的数据、登录责任、用户确认要求、核心锁局限和凭据泄漏响应；
