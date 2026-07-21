@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/codex-skill-framework/skill-spec.schema.json",
+  "title": "Codex Skill Framework catalog entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "name",
+    "profile",
+    "description",
+    "interface",
+    "contract",
+    "workflow",
+    "guardrails",
+    "gotchas",
+    "verification",
+    "profile_fields",
+    "resources",
+    "dependencies",
+    "maintenance",
+    "evaluation",
+    "triggers",
+    "evals"
+  ],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schema_version": {"const": "1.0"},
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "profile": {
+      "enum": ["research", "tool-integration", "artifact-production", "operational-workflow"]
+    },
+    "description": {"type": "string", "minLength": 40, "maxLength": 1024},
+    "interface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["display_name", "short_description", "default_prompt", "allow_implicit_invocation"],
+      "properties": {
+        "display_name": {"type": "string", "minLength": 1},
+        "short_description": {"type": "string", "minLength": 25, "maxLength": 64},
+        "default_prompt": {"type": "string", "minLength": 1},
+        "allow_implicit_invocation": {"type": "boolean"}
+      }
+    },
+    "contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["goal", "inputs", "outputs", "non_goals"],
+      "properties": {
+        "goal": {"type": "string", "minLength": 10},
+        "inputs": {"$ref": "#/$defs/nonEmptyStrings"},
+        "outputs": {"$ref": "#/$defs/nonEmptyStrings"},
+        "non_goals": {"$ref": "#/$defs/nonEmptyStrings"}
+      }
+    },
+    "workflow": {"allOf": [{"$ref": "#/$defs/nonEmptyStrings"}, {"minItems": 3}]},
+    "guardrails": {"$ref": "#/$defs/nonEmptyStrings"},
+    "gotchas": {"$ref": "#/$defs/nonEmptyStrings"},
+    "verification": {"$ref": "#/$defs/nonEmptyStrings"},
+    "profile_fields": {"type": "object"},
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["references", "scripts", "assets"],
+      "properties": {
+        "references": {"$ref": "#/$defs/resources"},
+        "scripts": {"$ref": "#/$defs/resources"},
+        "assets": {"$ref": "#/$defs/resources"}
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mcp"],
+      "properties": {
+        "mcp": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value", "description", "transport", "url"],
+            "properties": {
+              "value": {"type": "string"},
+              "description": {"type": "string"},
+              "transport": {"type": "string"},
+              "url": {"type": "string", "format": "uri"}
+            }
+          }
+        }
+      }
+    },
+    "maintenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "version", "status", "last_reviewed", "review_interval_days", "risk"],
+      "properties": {
+        "owner": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$"},
+        "status": {"enum": ["draft", "candidate", "stable", "deprecated"]},
+        "last_reviewed": {"type": "string", "format": "date"},
+        "review_interval_days": {"type": "integer", "minimum": 1, "maximum": 365},
+        "risk": {"enum": ["low", "medium", "high"]}
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["routing_runs_per_query", "baseline", "last_run", "summary"],
+      "properties": {
+        "routing_runs_per_query": {"type": "integer", "minimum": 1, "maximum": 20},
+        "baseline": {"enum": ["not-run", "no-skill", "previous-version"]},
+        "last_run": {"type": ["string", "null"], "format": "date"},
+        "summary": {"type": "string", "minLength": 1}
+      }
+    },
+    "triggers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["positive", "negative"],
+      "properties": {
+        "positive": {"$ref": "#/$defs/nonEmptyStrings"},
+        "negative": {"$ref": "#/$defs/nonEmptyStrings"}
+      }
+    },
+    "evals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "prompt", "expected_output", "assertions"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "prompt": {"type": "string", "minLength": 10},
+          "expected_output": {"type": "string", "minLength": 10},
+          "assertions": {"$ref": "#/$defs/nonEmptyStrings"},
+          "files": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyStrings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "purpose", "load_when"],
+        "properties": {
+          "path": {"type": "string"},
+          "purpose": {"type": "string"},
+          "load_when": {"type": "string"}
+        }
+      }
+    }
+  }
+}

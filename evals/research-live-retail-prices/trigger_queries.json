@@ -1,0 +1,82 @@
+[
+  {
+    "query": "帮我查一下这款 256GB 黑色手机今天在几家平台的到手价，给商品链接。",
+    "should_trigger": true,
+    "split": "train"
+  },
+  {
+    "query": "Compare the current delivered price of this exact UPC at Amazon, eBay, and Walmart.",
+    "should_trigger": true,
+    "split": "train"
+  },
+  {
+    "query": "这个型号现在哪里有货，最低可验证总价是多少？",
+    "should_trigger": true,
+    "split": "train"
+  },
+  {
+    "query": "Please verify whether this product link really has the advertised price for the selected size.",
+    "should_trigger": true,
+    "split": "train"
+  },
+  {
+    "query": "我登录淘宝后，你能帮我和京东同规格比价吗？",
+    "should_trigger": true,
+    "split": "train"
+  },
+  {
+    "query": "Find live offers for a new, unlocked version of this phone and separate third-party sellers.",
+    "should_trigger": true,
+    "split": "validation"
+  },
+  {
+    "query": "Check today's price for a 2-pack, including shipping, and tell me which costs are still unknown.",
+    "should_trigger": true,
+    "split": "validation"
+  },
+  {
+    "query": "The search result says $199. Open the listing and confirm the exact variant and current price.",
+    "should_trigger": true,
+    "split": "validation"
+  },
+  {
+    "query": "这款手机值得买吗？讲讲相机和续航。",
+    "should_trigger": false,
+    "split": "train"
+  },
+  {
+    "query": "Can you chart the historical price of this laptop over the last two years?",
+    "should_trigger": false,
+    "split": "train"
+  },
+  {
+    "query": "帮我把这个商品加入购物车并下单。",
+    "should_trigger": false,
+    "split": "train"
+  },
+  {
+    "query": "Write a web scraper that collects every product on this marketplace.",
+    "should_trigger": false,
+    "split": "train"
+  },
+  {
+    "query": "What is the difference between OLED and mini-LED displays?",
+    "should_trigger": false,
+    "split": "train"
+  },
+  {
+    "query": "Summarize the return policy shown in this saved PDF.",
+    "should_trigger": false,
+    "split": "validation"
+  },
+  {
+    "query": "我去年买的耳机订单号在哪里看？",
+    "should_trigger": false,
+    "split": "validation"
+  },
+  {
+    "query": "Draft a message asking an eBay seller whether they accept returns.",
+    "should_trigger": false,
+    "split": "validation"
+  }
+]

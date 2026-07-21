@@ -1,0 +1,36 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials*.json
+service-account*.json
+.secrets/
+secrets/
+auth/
+sessions/
+cookies/
+browser-profile/
+
+# Local and generated evaluation state
+drafts/*
+!drafts/.gitkeep
+eval-workspaces/
+reports/
+*.sarif
+
+# Python and editors
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.DS_Store
+.idea/
+.vscode/

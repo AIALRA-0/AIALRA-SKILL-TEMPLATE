@@ -1,0 +1,4 @@
+title = "Codex Skill Framework secret scanning"
+
+[extend]
+useDefault = true

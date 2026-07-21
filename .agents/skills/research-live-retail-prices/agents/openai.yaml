@@ -1,0 +1,7 @@
+interface:
+  display_name: "Research Live Retail Prices"
+  short_description: "Compare current offers using direct evidence"
+  default_prompt: "Use $research-live-retail-prices to compare current offers for this exact product and show the evidence."
+
+policy:
+  allow_implicit_invocation: true
