@@ -1,49 +1,49 @@
-# Controlled learning
+# 受控学习
 
-## Three layers
+## 三层结构
 
-1. Stable core: workflow, schemas, scripts, validators, instructions, permissions, and core lock. Runtime learning cannot write here.
-2. Active advisory rules: a bounded set injected into Runner directives. Core and current user instructions always win.
-3. Raw event history: one sanitized event per run, stored in the active ledger until losslessly archived.
+1. 稳定核心：工作流、Schema、脚本、validator、指令、权限和核心锁。Runtime 学习不能写入这一层。
+2. 活跃建议规则：注入 Runner 指令的有界规则集合。稳定核心和用户当前指令始终具有更高优先级。
+3. 原始事件历史：每次运行产生一条脱敏事件，先存放在活跃账本中，之后再进行无损归档。
 
-## Event contract
+## 事件契约
 
-An event records polarity, kebab-case scope, one sanitized sentence, a controlled evidence identifier, source hash, required state ID, timestamp, and promotion flag. The complete ledger and archives enforce at most one event for each state ID.
+每条事件记录正负极性、kebab-case 适用范围、一句脱敏经验、受控证据标识符、来源哈希、必填状态 ID、时间戳和晋升标记。完整账本和所有归档共同保证：每个状态 ID 最多只能对应一条学习事件。
 
-Accepted evidence prefixes are:
+允许的证据前缀为：
 
 - `validator:`
 - `executor:`
 - `review:`
 - `user-confirmed:`
 
-The learning command does not accept raw prompts, raw page content, or full tool output. It removes credential patterns, emails, URLs, and long numeric identifiers, and restricts the final sentence to 12–240 characters.
+学习命令不接受原始提示词、原始页面内容或完整工具输出。它会移除凭证模式、电子邮箱、URL 和长数字标识符，并把最终经验限制在 12–240 个字符内。
 
-## Lossless compaction
+## 无损压缩
 
-Strict semantic compression cannot guarantee both arbitrary text halving and no information loss. The runtime therefore separates storage size from active context size.
+严格的语义压缩无法同时保证任意文本减半和信息完全无损。因此，Runtime 将存储体积与活跃上下文体积分开管理。
 
-At the default threshold of 32 events:
+达到默认的 32 条事件阈值时：
 
-1. The exact events are written to a content-addressed JSONL archive.
-2. The active ledger is truncated only after the archive is safely written.
-3. Exact normalized duplicates are merged deterministically with polarity counts and source event IDs.
-4. Active rules are ranked by support and bounded to 16.
-5. Events not selected for active context remain fully available in archives and Git history.
+1. 将原始事件原样写入按内容寻址的 JSONL 归档。
+2. 只有确认归档安全写入后，才截断活跃账本。
+3. 对规范化后完全相同的规则进行确定性合并，同时保留正负计数和来源事件 ID。
+4. 按支持度对活跃规则排序，并将数量限制为最多 16 条。
+5. 未进入活跃上下文的事件仍完整保存在归档和 Git 历史中。
 
-Compaction is protected by an exclusive lock. Archive hash collisions or archive modification are hard failures.
+压缩过程由排他锁保护。归档哈希冲突或归档遭到修改都会触发硬失败。
 
-## Promotion
+## 晋升
 
-`promote.py` produces a proposal only. It never edits `workflow.yaml`, schemas, scripts, validators, `SKILL.md`, or `.core-lock.json`.
+`promote.py` 只生成提案。它绝不会编辑 `workflow.yaml`、Schema、脚本、validator、`SKILL.md` 或 `.core-lock.json`。
 
-Normal eligibility requires at least three supporting events. A single serious safety event may create a proposal only when explicitly user-confirmed. Every proposal starts with all gates incomplete:
+正常晋升资格要求至少三条支持事件。单次严重安全事件只有在用户明确确认后才能生成提案。每份新提案的所有关卡默认均为未完成：
 
-- contradiction review;
-- regression test;
-- workflow and core tests;
-- version bump;
-- human approval;
-- regenerated core lock.
+- 反例审查；
+- 回归测试；
+- 工作流和核心测试；
+- 版本升级；
+- 人工批准；
+- 重新生成核心锁。
 
-The core is changed in a separate reviewed task after these gates are satisfied.
+只有满足这些关卡后，才能在另一个经过审查的任务中修改稳定核心。

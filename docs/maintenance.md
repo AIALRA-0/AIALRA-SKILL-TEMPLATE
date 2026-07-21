@@ -1,20 +1,20 @@
-# Version and maintenance policy
+# 版本与维护策略
 
-Each generated Skill repository owns its own commits, tags, releases, rollback history, tests, and learning records.
+每个生成的 Skill 仓库都独立拥有自己的提交、标签、Release、回滚历史、测试和学习记录。
 
-Treat the Skill's public contract as its supported intent, excluded adjacent intents, required inputs, observable outputs, executor permissions, side effects, confirmation gates, fallback behavior, and validation guarantees.
+Skill 的公开契约包括：支持的意图、明确排除的相邻意图、必需输入、可观察输出、执行器权限、副作用、确认关卡、回退行为和验证保证。
 
-- PATCH: instruction or implementation fixes that preserve this contract.
-- MINOR: backward-compatible new node, optional capability, or stronger validation.
-- MAJOR: changed trigger boundary, required input/output, permissions, side effects, graph order, or migration requirement.
+- PATCH：不改变公开契约的指令修复或实现修复。
+- MINOR：向后兼容的新节点、可选能力或更强的验证。
+- MAJOR：触发边界、必需输入/输出、权限、副作用、图执行顺序或迁移要求发生变化。
 
-Learning-only commits do not automatically change the core version. Promoting learning into stable core requires an appropriate version bump.
+只包含学习数据的提交不会自动改变核心版本。将学习规则晋升到稳定核心时，必须进行适当的版本升级。
 
-Recommended lifecycle:
+推荐生命周期：
 
-1. Draft: `configured=false`; structural validation only.
-2. Candidate: configured graph, deterministic tests, adjacent non-trigger tests, and clean core lock.
-3. Stable: repeated task evaluation, failure-path tests, real low-risk use, version tag, and rollback point.
-4. Deprecated: implicit invocation disabled or replacement guidance supplied before removal.
+1. 草稿（Draft）：`configured=false`，只进行结构验证。
+2. 候选（Candidate）：工作流已经配置，具备确定性测试、相邻非触发测试和干净的核心锁。
+3. 稳定（Stable）：完成重复任务评估、失败路径测试、真实低风险使用、版本标签和回滚点。
+4. 已弃用（Deprecated）：移除前先禁用隐式调用，或者提供替代方案说明。
 
-Do not place multiple generated repositories inside this template repository. If unified discovery is later required, use a thin external registry containing repository URLs and versions only.
+不要把多个生成后的仓库放入本模板仓库内部。如果以后需要统一发现能力，应使用一个很薄的外部注册表，只保存仓库 URL 和版本，不参与具体运行。
