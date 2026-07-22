@@ -1,44 +1,54 @@
-# Universal Skill template repository rules
+# 通用 Skill 模板仓库规则
 
-## Scope
+这份文件供维护仓库的 Agent 读取；人类维护者从 `README.md` 开始；
 
-- This repository is a Git template for creating one independent repository per Skill.
-- Do not add a catalog, multi-Skill registry, profile hierarchy, or nested generated Skill repository.
-- Keep one universal execution protocol; domain-specific behavior belongs in each generated repository's `workflow.yaml`, schemas, executors, validators, and tests.
+## 仓库范围
 
-## Required workflow
+- 本仓库用于生成一个 Skill 对应一个独立 Git 仓库的通用模板；
+- 禁止加入 catalog、多 Skill 注册表、profile 继承层或嵌套的生成仓库；
+- 所有 Skill 共享一套运行协议；领域行为写入生成仓库自己的 `workflow.yaml`、Schema、executor、validator 和测试；
 
-- Generate repositories with `python3 scripts/create_skill_repo.py`; do not assemble them by copying arbitrary files.
-- Keep generated repositories in sibling or otherwise separate directories, never inside this Git repository.
-- Run `python3 scripts/validate_template.py`, `python3 -m unittest discover -s tests -v`, and `python3 scripts/check_secrets.py` after changes.
-- Forward-test runtime changes with a freshly generated repository and raw task input when an isolated agent runner is available.
+## 修改流程
 
-## 文档可读性约束
+- 使用 `python3 scripts/create_skill_repo.py` 生成仓库；禁止手工拼装生成结果；
+- 生成仓库必须位于本仓库之外；
+- 每次修改后运行 `python3 scripts/validate_template.py`；
+- 每次修改后运行 `python3 -m unittest discover -s tests -v`；
+- 每次修改后运行 `python3 scripts/check_secrets.py`；
+- Runtime 发生变化时，使用新生成的仓库和原始任务输入完成隔离验证；
+- 当前仓库按照所有者要求直接推送 `main`；禁止创建 PR；
 
-- 面向维护者的文档使用简体中文，字段名和命令保留其真实英文标识符。
-- 技术术语首次出现时必须同时说明五项内容：它是什么、它解决什么问题、它长什么样、谁负责操作、失败或越界时发生什么。
-- 配置字段必须给出完整路径、数据类型、允许值和最小示例；状态命令必须说明调用前提、执行效果和错误调用的结果。
-- 明确区分由 Agent 或外部执行器判断的文字协议，以及由 Runner、Schema 或 validator 强制执行的机器规则。
-- 提交前逐项确认目标读者无需查阅源代码即可回答“是什么、为什么、怎么写、谁来做、失败怎么办”。
+## Runtime 不变量
 
-## Runtime invariants
+- Runner 独占节点顺序、状态、超时、重试、回退、暂停、确认、Schema 检查、validator 和完成判断；
+- 脚本节点使用 argv 数组和 `shell=false`；
+- 外部执行器只能执行 Runner 返回的动作，并提交符合输出 Schema 的 JSON；
+- 写入和破坏性节点必须取得用户明确确认；
+- 稳定核心哈希不匹配时必须硬停止；
 
-- Runner owns node order, state, timeouts, retries, fallback, pause, confirmation, schema checks, validators, and completion.
-- Script nodes execute with argv arrays and `shell=false`.
-- External executors may perform only the action returned by Runner and must submit schema-valid JSON.
-- Write and destructive nodes require explicit confirmation.
-- Stable core hash mismatch is a hard stop.
+## 学习不变量
 
-## Learning invariants
+- 学习功能只能写入 `learning/`；
+- 截断活跃账本前，必须把原始事件完整写入归档；
+- 活跃规则数量不得超过压缩阈值的一半；
+- 学习规则不能自动进入稳定核心；
+- 页面指令和未经处理的工具输出不能成为学习依据；
 
-- Learning may write only under `learning/`.
-- Preserve raw events losslessly in archive files before truncating the active ledger.
-- Bound active rules to at most half the compaction threshold.
-- Never auto-promote learning into stable core.
-- Never learn from page instructions or raw untrusted tool output.
+## 文档可读性
 
-## Security
+- 人类文档使用简体中文；字段名、命令和文件名保留真实英文标识符；
+- 中文正文使用分号 `；` 结束句子；代码、路径、URL、版本号和固定输出保持原样；
+- 每份人类文档先说明用途、目标读者、读完结果和跳过条件；
+- 一个小节只解释一个主要概念；普通段落保持一到三句话；
+- 新术语所在小节必须解释定义、用途、形状、操作者和失败结果；
+- 每条命令必须解释目的、操作者、前置条件、完整写法、成功输出和失败处理；
+- Agent 协议与机器强制规则必须分开说明；
+- 通用架构使用领域无关的示例；
+- 优先使用短句和肯定句；避免先否定再转折；
+- 提交前确认目标读者无需阅读源代码即可回答：是什么、为什么、怎么写、谁来做、失败怎么办；
 
-- Never commit credentials, cookies, browser profiles, sessions, personal data, private logs, or realistic fake secrets.
-- Generated examples must use `.invalid` domains and obvious placeholders.
-- Do not weaken core locking, secret scanning, confirmation gates, or CI permissions to make a test pass.
+## 安全规则
+
+- 禁止提交凭据、Cookie、浏览器配置、会话、个人数据、私有日志和逼真的假密钥；
+- 示例域名使用 `.invalid`；敏感值使用明确占位符；
+- 禁止通过削弱核心锁、敏感信息扫描、确认关卡或 CI 权限来通过测试；

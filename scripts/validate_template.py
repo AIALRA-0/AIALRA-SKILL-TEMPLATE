@@ -14,7 +14,20 @@ from create_skill_repo import build
 
 
 REQUIRED = (
+    "README.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "docs/architecture.md",
+    "docs/workflow-reference.md",
+    "docs/file-map.md",
+    "docs/learning.md",
+    "docs/maintenance.md",
+    "docs/migration-v0.2.md",
+    "docs/research-notes.md",
     "template/AGENTS.md.tmpl",
+    "template/README.md.tmpl",
+    "template/SECURITY.md.tmpl",
+    "template/CHANGELOG.md.tmpl",
     "template/.agents/skills/__SKILL_NAME__/SKILL.md.tmpl",
     "template/.agents/skills/__SKILL_NAME__/workflow.yaml.tmpl",
     "template/.agents/skills/__SKILL_NAME__/agents/openai.yaml.tmpl",
@@ -31,6 +44,21 @@ REQUIRED = (
 )
 
 
+def documentation_style_errors(root: Path) -> list[str]:
+    """Return documentation errors required by the repository writing standard."""
+    errors: list[str] = []
+    paths = sorted({*root.rglob("*.md"), *root.rglob("*.md.tmpl")})
+    for path in paths:
+        if any(part in {".git", ".venv", "__pycache__"} for part in path.parts):
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "。" in text:
+            errors.append(
+                f"documentation uses Chinese full stop instead of semicolon: {path.relative_to(root)}"
+            )
+    return errors
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     errors: list[str] = []
@@ -40,6 +68,7 @@ def main() -> int:
     for forbidden in ("catalog", "evals", "templates/profiles"):
         if (root / forbidden).exists():
             errors.append(f"obsolete multi-Skill control plane still exists: {forbidden}")
+    errors.extend(documentation_style_errors(root))
     if any(path.name == ".git" for path in (root / "template").rglob(".git")):
         errors.append("template must not contain nested Git repositories")
     for path in sorted(root.rglob("*.py")):

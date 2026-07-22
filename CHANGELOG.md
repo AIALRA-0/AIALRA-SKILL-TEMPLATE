@@ -1,35 +1,51 @@
-# Changelog
+# 变更记录
+
+这份文件按版本记录模板已经发生的变化；新用户可以从最新版本开始阅读；
+
+## [0.4.0] - 2026-07-21
+
+### 变更
+
+- 将全部 Markdown 文档和 Markdown 模板改写为分层中文说明；
+- 将人类教学文档统一为零前置知识、低信息密度结构；
+- 将 Workflow 精确字段参考从架构入门中独立出来；
+- 新增文件地图，集中说明每个文件的用途和修改时机；
+- 将中文正文的句末标点统一为分号；
+- 增加文档标点自动检查，阻止 Markdown 重新引入中文句号；
+- 保持 Runtime 行为、Workflow IR 版本和安全边界不变；
 
 ## [0.3.1] - 2026-07-21
 
-### Changed
+### 变更
 
-- Explained side-effect values, argv arrays, `shell=false`, stop conditions, Runner states, external executors, and external result submission in plain language.
-- Added a five-part documentation contract covering definition, purpose, exact shape, responsible actor, and failure behavior.
+- 补充副作用、argv 数组、`shell=false`、停止条件、Runner 状态、外部执行器和结果提交说明；
+- 增加定义、用途、形状、操作者和失败结果五项文档约束；
 
 ## [0.3.0] - 2026-07-21
 
-### Changed
+### 变更
 
-- Grouped every `workflow.yaml` top-level field under `definition`, `execution`, or `learning`.
-- Split execution settings into `limits`, `graph`, and `completion`, and learning settings into `compaction`.
-- Upgraded the Workflow IR to version 2 and reject unclassified or unknown configuration fields.
+- 将 `workflow.yaml` 顶层字段归入 `definition`、`execution` 和 `learning`；
+- 将执行配置分为 `limits`、`graph` 和 `completion`；
+- 将学习配置归入 `compaction`；
+- 将 Workflow IR 升级为版本 2；
+- 验证器拒绝未分类和未知配置字段；
 
 ## [0.2.0] - 2026-07-20
 
-### Changed
+### 变更
 
-- Replaced the multi-Skill catalog/profile architecture with one universal independent-repository template.
-- Replaced document-driven generation with a graph IR and deterministic state-machine Runner.
-- Added core SHA-256 locking, structured executor contracts, confirmation gates, retry/fallback control, and final validation.
-- Added sanitized learning ledger, lossless archival compaction, bounded advisory rules, and proposal-only promotion.
+- 使用一个通用独立仓库模板取代多 Skill catalog 和 profile 架构；
+- 使用图 IR 和确定性状态机 Runner 取代文档驱动执行；
+- 增加核心 SHA-256 锁、结构化执行器契约、确认关卡、重试、回退和最终校验；
+- 增加脱敏学习账本、无损归档压缩、受限活跃规则和仅提案晋升；
 
-### Removed
+### 移除
 
-- Catalog control plane, shared eval directories, and four profile templates.
+- 移除 catalog 控制面、共享评估目录和四种 profile 模板；
 
 ## [0.1.0] - 2026-07-20
 
-### Added
+### 新增
 
-- Initial catalog-driven multi-Skill framework, retained in Git tag `v0.1.0` for recovery.
+- 创建最初的 catalog 驱动 Skill 框架；该版本保存在 Git 标签 `v0.1.0` 中；

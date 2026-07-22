@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from create_skill_repo import build  # noqa: E402
+from validate_template import documentation_style_errors  # noqa: E402
 
 
 def run_json(command: list[str], cwd: Path, expected_code: int = 0) -> dict:
@@ -169,6 +170,17 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
                 expected_code=2,
             )
             self.assertEqual("error", error["status"])
+
+    def test_documentation_style_rejects_chinese_full_stops(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            document = root / "example.md"
+            document.write_text("一句说明；\n", encoding="utf-8")
+            self.assertEqual([], documentation_style_errors(root))
+            document.write_text("一句说明。\n", encoding="utf-8")
+            errors = documentation_style_errors(root)
+            self.assertEqual(1, len(errors))
+            self.assertIn("example.md", errors[0])
 
     def test_sensitive_scanner_does_not_trust_example_variable_names(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

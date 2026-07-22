@@ -1,365 +1,265 @@
-# Skill Runtime 架构
+# Skill Runtime 架构入门
 
-## 文档职责
+## 这份文件能帮你做什么
 
-本文定义通用 Skill Runtime 的组成、执行协议、状态控制、稳定核心和学习边界。
+这份文件回答一个问题：用户提出请求后，Skill 怎样一步一步得到经过检查的结果；
 
-适用对象：
+适合阅读这份文件的人：
 
-- 模板维护者；
-- Runtime 开发者；
-- 安全审计者；
-- 领域 Skill 设计者。
+- 第一次理解 Skill 运行过程的人；
+- 准备设计工作流的人；
+- 准备审计运行边界的人；
 
-创建 Skill 的操作步骤由根目录 `README.md` 说明。本文用于 Runtime 设计、修改和审计。
+读完以后，你应该能够说清 Agent、Runner、节点和验证器各自负责什么；
 
-## 架构目标
+如果你已经理解整体流程，只想查询字段和命令，可以直接阅读 [Workflow 精确参考](workflow-reference.md)；
 
-每个 Skill 仓库包含一个 Skill、一份工作流和一套独立 Git 历史。
+## 先记住三个角色
 
-Runtime 强制以下规则：
+一次 Skill 运行包含三个主要角色；
 
-1. `workflow.yaml` 固定执行节点和节点顺序。
-2. `runner.py` 独占执行状态和状态转换。
-3. Schema 固定每个节点的输入输出结构。
-4. validator 执行确定性结果检查。
-5. 重试、回退、暂停和停止均由工作流声明。
-6. 外部副作用按照声明进入用户确认状态。
-7. 运行时学习与稳定核心物理分离。
-8. Git 和核心锁记录稳定核心的版本与完整性。
+### 用户
 
-Agent 的职责限定为：生成入口 JSON、执行 Runner 返回的外部动作、提交结构化节点结果、向用户交付已完成结果。
+用户提出目标、提供必要材料，并决定是否批准外部写入；
 
-## 核心组件
+登录、验证码、扫码和双重认证也由用户亲自完成；
 
-| 文件或目录 | 职责 | 运行时写入权限 |
-|---|---|---:|
-| `SKILL.md` | 定义触发条件、适用边界和 Runner 调用协议 | 禁止 |
-| `workflow.yaml` | 定义节点、顺序、执行器、重试、回退和停止条件 | 禁止 |
-| `schemas/` | 定义节点输入、节点输出和最终输出结构 | 禁止 |
-| `executors/` | 保存固定、重复、可计算的领域脚本 | 禁止 |
-| `validators/` | 执行节点结果和最终结果检查 | 禁止 |
-| `scripts/runner.py` | 保存状态、执行节点、验证结果、控制状态转换 | 禁止 |
-| `scripts/runtime_lib.py` | 提供 Schema、路径、工作流和核心锁验证 | 禁止 |
-| `.core-lock.json` | 保存稳定核心文件的 SHA-256 清单 | 仅限受审查的核心升级 |
-| `learning/ledger.jsonl` | 暂存每次运行产生的一条脱敏事件 | 允许 |
-| `learning/archive/` | 无损保存已压缩批次的原始事件 | 允许 |
-| `learning/active-rules.json` | 保存数量受限的活跃建议规则 | 允许 |
-| `learning/proposals/` | 保存核心晋升候选提案 | 允许 |
-| `.runtime/` | 保存运行状态和节点临时输入输出 | 允许，不进入 Git |
+### Agent
 
-`executors/`、`validators/`、`references/` 和 `assets/` 按领域工作流需求创建。无对应实现时不创建空目录。
+Agent 理解用户的自然语言，并把请求整理成结构化输入；
 
-## 执行协议
+遇到外部节点时，Agent 调用 Runner 指定的工具或界面能力，再把结果交回 Runner；
+
+Agent 可以完成语义判断；它不能改变节点顺序、绕过验证或自行宣布完成；
+
+### Runner
+
+Runner 是一个确定性状态机程序；对应文件为 `.agents/skills/<skill-name>/scripts/runner.py`；
+
+Runner 保存当前节点、执行状态、重试次数、用户确认和节点结果；
+
+Runner 决定下一步允许做什么，并拒绝不符合当前状态的命令；
+
+## 为什么需要 Runner
+
+Agent 擅长理解语言和处理不规则情况；同一请求可能产生不同推理过程；
+
+运行顺序、安全确认、超时和完成条件需要稳定执行；Runner 把这些规则写成可测试程序；
+
+职责分开后：
+
+- Agent 负责理解和外部操作；
+- Runner 负责顺序和状态；
+- Schema 负责数据结构；
+- validator 负责额外的确定性检查；
+
+## 一次请求怎样运行
+
+先看完整流程；后面会逐步解释每一部分；
 
 ```mermaid
 flowchart TD
-    A["接收用户请求<br/>读取任务目标与必要输入"] --> B["校验入口输入<br/>Agent 生成符合入口 Schema 的 JSON"]
-    B --> C["创建执行状态<br/>Runner 验证 workflow、definition.configured、核心锁与入口数据<br/>生成 state_id 并进入 execution.graph.entry_node"]
-    C --> D["准备当前节点<br/>检查执行上限、timeout、executor 与确认要求"]
-    D --> P{"执行前置条件满足"}
-    P -- "否" --> W["暂停并等待用户<br/>确认后 approve；完成必要操作后 resume"]
-    W --> D
-    P -- "是" --> E["执行当前节点<br/>script 由 Runner 执行；外部节点返回受约束指令"]
-    E --> F["校验节点输出<br/>检查输出 Schema，并运行节点 validator"]
-    F -- "通过" --> G["更新执行状态<br/>保存节点结果，并读取 on_success"]
-    F -- "失败" --> H["执行预设失败策略<br/>记录错误类型、消息与重试次数"]
-    H -- "允许重试" --> E
-    H -- "需要用户" --> W
-    H -- "进入 fallback" --> R["切换到已声明的 fallback 节点"]
-    R --> D
-    H -- "致命失败或重试耗尽" --> X["停止执行<br/>status=failed，并保存 last_error"]
-    G -- "还有后续节点" --> D
-    G -- "到达完成边" --> I["执行最终校验<br/>检查 final output Schema 与 final validator"]
-    I -- "失败" --> H
-    I -- "通过" --> J["完成并交付结果<br/>status=completed，并返回 final_output"]
-    J --> K["记录一条学习事件<br/>校验证据与状态，完成脱敏和去重"]
-    K --> L{"达到 compact_every 阈值"}
-    L -- "否" --> M["结束本次执行"]
-    L -- "是" --> N["归档并压缩<br/>先无损归档原始事件，再更新活跃建议规则"]
-    N --> M
+    A["用户提出请求<br/>说明目标、输入和限制"] --> B["Agent 整理入口 JSON<br/>只填写入口 Schema 允许的字段"]
+    B --> C["Runner 创建运行状态<br/>检查工作流、草稿状态、核心锁和入口数据"]
+    C --> D["Runner 准备当前节点<br/>检查超时、执行器和确认要求"]
+    D --> E{"当前节点需要什么"}
+    E -- "脚本" --> F["Runner 直接运行脚本<br/>传入输入文件和输出文件路径"]
+    E -- "外部能力" --> G["Runner 返回结构化动作<br/>进入 waiting-external"]
+    E -- "用户确认" --> H["Runner 暂停<br/>进入 waiting-confirmation"]
+    H --> I["用户明确同意<br/>宿主调用 approve"]
+    I --> D
+    G --> J["Agent 执行指定动作<br/>提交结果或报告失败"]
+    F --> K["Runner 读取节点输出"]
+    J --> K
+    K --> L["检查输出 Schema<br/>运行可选 validator"]
+    L --> M{"结果是否通过"}
+    M -- "通过且有下一节点" --> D
+    M -- "通过且到达完成边" --> N["执行最终 Schema 和 validator"]
+    M -- "失败" --> O["按照声明进行重试、回退、等待用户或停止"]
+    O -- "可以继续" --> D
+    O -- "无法继续" --> P["进入 failed<br/>保存错误和轨迹"]
+    N -- "通过" --> Q["进入 completed<br/>返回 final_output"]
+    N -- "失败" --> O
+    Q --> R["记录一条脱敏学习事件<br/>学习内容只写入 learning 目录"]
 ```
 
-Runner 是当前节点和执行状态的唯一写入者。Agent 禁止直接编辑状态文件、跳转节点或伪造完成状态。
+## 第一步：Agent 准备入口数据
 
-## 工作流 IR
+用户通常使用自然语言提出请求；Runner 只接收 JSON；
 
-`workflow.yaml` 是执行事实来源。文件采用兼容 JSON 的 YAML 格式，由 Python 标准库 JSON 解析器读取。
+Agent 先读取入口节点指定的输入 Schema，再把用户请求转换成符合该 Schema 的最小 JSON；
 
-顶层固定为 `definition`、`execution`、`learning` 三个大类。配置条目必须位于对应分类的二级或三级结构中。顶层散项、未知分类和未知字段均由验证器拒绝。
+Schema 是一份数据结构规则；它可以规定必填字段、字段类型、长度和允许值；
 
-以下代码块采用 `jsonc` 语法。`//` 注释仅用于解释字段；实际 `workflow.yaml` 必须删除全部注释，并保持可被标准 JSON 解析器读取。
+入口 JSON 不符合 Schema 时，Runner 拒绝启动，并返回具体字段错误；
 
-```jsonc
-{
-  "definition": { // 工作流身份、协议版本和配置状态。
-    "ir_version": 2, // 工作流 IR 协议版本；当前仅接受 2，不兼容变更必须升级版本。
-    "skill_name": "example-skill", // Skill 稳定标识符；必须与 .agents/skills/ 下的目录名一致。
-    "configured": true // 配置状态；false 为不可执行草稿，true 表示领域配置和验证已经完成。
-  },
-  "execution": { // 单次运行的资源、图和完成校验分类。
-    "limits": { // 单次执行的全局资源边界。
-      "max_nodes": 16, // 允许成功完成的最大节点数量，取值范围为 1–64。
-      "total_timeout_seconds": 1800 // 从 started_at 计算的总时长上限，单位为秒，取值范围为 1–86400。
-    },
-    "graph": { // 工作流入口与节点集合。
-      "entry_node": "normalize-input", // 入口节点 ID；必须存在于 nodes 数组中。
-      "nodes": [] // 工作流节点数组；实际文件至少包含一个完整节点，此处空数组仅表示分类契约。
-    },
-    "completion": { // 工作流到达完成边后的最终校验。
-      "output_schema": "schemas/final.schema.json", // 最终输出 Schema 的安全相对路径。
-      "validator": null // 最终 validator 的 argv 数组；null 表示仅执行最终 Schema 验证。
-    }
-  },
-  "learning": { // 受控学习配置。
-    "compaction": { // 学习事件归档和活跃规则压缩配置。
-      "compact_every": 32, // 触发压缩的事件数量，取值范围为 4–1000。
-      "active_rule_limit": 16 // 活跃建议规则上限，取值范围为 1–500，且不得超过 compact_every 的一半。
-    }
-  }
-}
-```
+## 第二步：Runner 创建状态
 
-每个节点必须声明：
+Runner 为每次运行创建唯一 `state_id`；
 
-- 唯一节点 ID：`id` 使用小写 kebab-case 标识节点，并在当前工作流中保持唯一。
-- 输入 Schema：`input_schema` 指向节点接收数据的 Schema 文件，并在节点执行前约束输入结构。
-- 输出 Schema：`output_schema` 指向节点产出数据的 Schema 文件，并在状态转换前约束输出结构。
-- 一个执行器：`executor` 固定为 `script`、`mcp`、`browser-dom`、`computer-use` 或 `reasoning` 中的一种。
-- 精确脚本 argv 或外部动作契约：脚本节点使用 `command` argv 数组，外部节点使用包含动作名称和参数的 `action` 对象。
-- 副作用类别：`side_effect` 声明节点属于 `none`、`read`、`write` 或 `destructive`。
-- 用户确认要求：`requires_confirmation` 明确节点执行前是否必须取得用户确认，写入和破坏性节点必须设为 `true`。
-- 超时时间：`timeout_seconds` 限定单次节点执行可以占用的最长时间。
-- 最大重试次数：`max_retries` 限定节点失败后允许重新执行的次数。
-- 可选 validator：`validator` 保存确定性校验程序的 argv 数组，不需要额外校验时声明为 `null`。
-- `on_success` 节点：`on_success` 指定当前输出通过全部校验后进入的节点或完成边 `__complete__`。
-- 可选 `fallback` 节点：`fallback` 指定重试结束后进入的替代节点，不设置回退路径时声明为 `null`。
-- 停止条件：`stop_conditions` 使用字符串数组列出必须暂停或终止当前节点的条件，没有附加条件时使用空数组。
+状态文件会记录：
 
-### 副作用类别
+- 当前节点；
+- 当前状态；
+- 已完成节点的结果；
+- 重试次数；
+- 已确认节点；
+- 最后一次错误；
+- 执行轨迹；
 
-`side_effect` 表示节点会对工作流之外的数据或系统产生哪类影响，Runner 使用该值检查节点是否需要用户确认。
+Agent 不能直接编辑状态文件；所有状态变化都要通过 Runner 命令完成；
 
-| 取值 | 一句话解释 |
+## 第三步：Runner 准备节点
+
+节点是工作流中的一个执行步骤；
+
+每个节点会声明：
+
+- 接收什么输入；
+- 产生什么输出；
+- 使用什么执行器；
+- 是否读取或改变外部状态；
+- 是否需要用户确认；
+- 最长执行时间；
+- 失败后可以重试几次；
+- 成功后进入哪里；
+- 失败后是否进入回退节点；
+
+字段名称、允许值和完整示例位于 [Workflow 精确参考](workflow-reference.md)；
+
+## 第四步：执行当前节点
+
+节点分成脚本节点和外部节点；
+
+### 脚本节点
+
+脚本节点用于固定、重复和可以计算的操作；
+
+Runner 直接启动脚本，并提供输入文件和输出文件路径；脚本完成后把 JSON 写入指定输出文件；
+
+脚本启动失败、超时或没有产生输出文件时，Runner 按照节点失败规则处理；
+
+### 外部节点
+
+外部节点使用 Runner 进程之外的能力；包括 MCP、浏览器 DOM、Computer Use 和 reasoning；
+
+Runner 返回当前节点已经声明的执行器、动作、参数和输出 Schema；
+
+Agent 或宿主执行该动作；成功时调用 `submit` 提交候选 JSON，失败时调用 `fail` 报告原因；
+
+Runner 收到结果后仍会执行 Schema 和 validator 检查；
+
+## 第五步：检查节点结果
+
+每个节点输出都先经过输出 Schema；
+
+Schema 适合检查字段是否存在、类型是否正确、数量是否超限；
+
+validator 是额外的确定性检查程序；它适合检查跨字段关系和 Schema 无法表达的规则；
+
+任何一项检查失败时，结果不会进入下一节点；
+
+## 第六步：决定下一状态
+
+Runner 只允许工作流中已经声明的状态转换；
+
+常见状态包括：
+
+| 状态 | 人话含义 |
 |---|---|
-| `none` | 节点只处理已经提供的输入，不读取或改变工作流之外的数据和系统状态。 |
-| `read` | 节点读取工作流之外的现有数据，同时保持外部数据和系统状态不变。 |
-| `write` | 节点创建或更新工作流之外的数据，执行前必须取得用户确认。 |
-| `destructive` | 节点删除、覆盖、撤销或执行其他难以恢复的外部变更，执行前必须取得用户确认。 |
+| `running` | 当前节点已经具备推进条件； |
+| `waiting-confirmation` | 当前节点正在等待用户确认； |
+| `waiting-external` | Runner 已返回外部动作，正在等待结果； |
+| `waiting-user` | 当前流程正在等待用户亲自完成必要操作； |
+| `completed` | 最终结果已经通过全部检查； |
+| `failed` | 工作流已经失败并停止； |
 
-### `command` 与 argv 数组
+每个状态允许的命令和命令效果位于 [Workflow 精确参考](workflow-reference.md)；
 
-argv 是 argument vector 的缩写，表示传给程序的一组命令行参数。`command` 使用 JSON 数组保存 argv，数组中的每个字符串都是一个独立参数。
+## 失败后会发生什么
 
-```json
-{
-  "command": [
-    "python3",
-    "executors/process.py",
-    "--input",
-    "${input_file}",
-    "--output",
-    "${output_file}"
-  ]
-}
-```
+节点失败后，Runner 根据声明选择一种结果；
 
-该数组从上到下表示：启动 `python3`，运行 `executors/process.py`，把 Runner 创建的输入文件路径传给 `--input`，再把节点应当写入的输出文件路径传给 `--output`。Runner 在执行前将 `${input_file}` 和 `${output_file}` 替换成当前运行的真实路径。
+### 重试
 
-argv 数组明确保存每个参数的边界。参数中包含空格时仍然只占一个数组元素，Runner 可以逐项验证参数，日志也能准确还原实际执行内容。
+当前节点在 `max_retries` 范围内重新执行；
 
-`shell=false` 表示 Runner 直接启动 argv 中指定的程序，不把命令交给 Bash、Zsh 等命令解释器。管道符 `|`、重定向符 `>`、通配符 `*` 和命令替换符 `$()` 不会被 Shell 自动解释，从而减少命令拼接和输入注入风险，并让不同运行环境采用一致的参数边界。
+重试次数耗尽后，Runner 进入回退节点或失败状态；
 
-### `stop_conditions`
+### 回退
 
-`stop_conditions` 保存外部执行器在执行当前节点时必须检查的文字条件。一个节点可能同时具有多个独立停止原因，因此该字段使用数组保存，每个数组元素只描述一个原因，空数组表示没有附加的文字停止条件。
+Runner 进入节点预先声明的 `fallback`；
 
-```json
-{
-  "stop_conditions": [
-    "无法访问必需数据源时停止。",
-    "出现身份验证要求时报告 user-required。"
-  ]
-}
-```
+回退节点必须存在，并且不能直接伪造完成结果；
 
-停止条件分为以下两层：
+### 等待用户
 
-| 层级 | 保存位置 | 谁检查 | 触发后的结果 |
-|---|---|---|---|
-| 外部执行协议 | `stop_conditions` 字符串数组 | Agent 或外部执行器读取文字并判断当前现场是否符合条件 | 调用 `fail` 报告 `user-required`、`fallback` 或 `fatal`，由 Runner 更新状态。 |
-| 机器强制规则 | Schema、validator、超时、重试上限和确认关卡 | Runner 通过代码执行确定性检查 | 检查不通过时拒绝节点输出、重试、回退、等待用户或停止工作流。 |
+外部动作需要登录、验证码或必要输入时，Runner 进入 `waiting-user`；
 
-Runner 不解析 `stop_conditions` 文字，也不根据字符串自动跳转节点。能够由程序确定的停止规则必须写入 Schema、validator 或 Runtime 检查，确保其可以被稳定执行和测试。
+用户完成操作后，宿主调用 `resume`；
 
-所有节点必须从入口节点可达。成功边和回退边禁止形成环路。重复执行必须使用 `max_retries` 限定次数。
+### 停止
 
-## 执行器选择
+致命错误、预算耗尽或安全条件触发时，Runner 进入 `failed`；
 
-外部执行器是运行在 Runner 进程之外的能力，包括 `mcp`、`browser-dom`、`computer-use` 和 `reasoning`。Runner 负责选择当前节点、返回已声明的动作并校验结果；Agent 或宿主负责调用指定的外部能力，并把执行结果交回 Runner。`script` 节点由 Runner 自己启动，因此不属于外部节点。
+失败状态保存错误和轨迹，并停止后续节点；
 
-执行器按照以下优先级设计：
+## 写入为什么需要确认
 
-1. `script`：固定、重复、可计算的操作，由 Runner 直接执行。
-2. `mcp`：具有固定工具名称和结构化参数的外部能力。
-3. `browser-dom`：通过结构化页面元素完成的界面操作。
-4. `computer-use`：无法通过结构化接口完成的界面操作；身份验证步骤由用户完成。
-5. `reasoning`：需要语义判断的操作；输出必须符合节点 Schema。
+节点通过 `side_effect` 声明副作用；
 
-每个节点固定一种执行器。Runtime 执行期间禁止替换节点执行器。
+`write` 表示创建或更新外部数据；`destructive` 表示删除、覆盖、撤销或其他难以恢复的操作；
 
-## 状态控制
+这两类节点必须把 `requires_confirmation` 设为 `true`；
 
-表中的命令是 Runner 的状态转换命令，通常由 Agent 或宿主调用。命令只在对应状态下有效，Runner 会拒绝不符合当前状态的调用。
+Runner 在执行前进入 `waiting-confirmation`；宿主取得用户真实同意后才能调用 `approve`；
 
-| 状态 | 当前到底发生了什么 | 下一条 Runner 命令 | 命令会做什么 |
-|---|---|---|---|
-| `running` | 当前节点的前置条件已经满足，节点尚未完成，Runner 允许继续推进。 | `advance` | 请求 Runner 推进当前节点；脚本节点会立即执行，外部节点会返回动作并进入等待结果状态。 |
-| `waiting-confirmation` | 当前节点会写入或破坏外部状态，Runner 已暂停并等待用户明确同意。 | `approve` | 记录用户对当前节点的确认，再把状态恢复为 `running`。 |
-| `waiting-external` | Runner 已返回外部动作，当前正在等待该动作的结果或失败报告。 | `submit` 或 `fail` | `submit` 提交候选输出供 Runner 校验，`fail` 报告外部动作没有产生可接受结果。 |
-| `waiting-user` | 外部执行器报告必须由用户亲自完成登录、验证或补充输入，Runner 已暂停。 | `resume` | 用户完成必要操作后恢复当前节点，Runner 重新进入 `running`。 |
-| `completed` | 最终输出已经通过节点校验和最终校验，工作流已经结束。 | 无 | 交付 `final_output`，并按规则记录一次脱敏学习事件。 |
-| `failed` | 致命错误发生或允许的重试与回退路径已经耗尽，工作流已经结束。 | 无 | 保留 `last_error` 和执行轨迹，停止后续节点。 |
+## 最终结果怎样完成
 
-### 外部节点如何执行和回报
+节点的 `on_success` 指向 `__complete__` 时，Runner 开始最终验证；
 
-Runner 进入外部节点时会返回一份结构化指令。以下示例表示：当前状态正在等待 MCP 执行器调用 `records.lookup`，随后返回符合指定输出 Schema 的结果。
+最终输出需要通过最终 Schema 和可选 final validator；
 
-```json
-{
-  "state_id": "example-state-id",
-  "status": "waiting-external",
-  "node": {
-    "id": "lookup-record",
-    "executor": "mcp",
-    "action": {
-      "name": "records.lookup",
-      "arguments": {
-        "query": "example"
-      }
-    },
-    "output_schema": "schemas/lookup-output.schema.json"
-  }
-}
-```
+全部通过后，状态变为 `completed`，Runner 返回 `final_output`；
 
-“执行 Runner 返回的动作”表示 Agent 或宿主只调用 `node.executor` 指定的执行器和 `node.action` 指定的动作，不临时替换工具、动作名称或参数范围。
+任何检查失败时，工作流按照失败规则继续处理；
 
-外部动作成功产生结果后，Agent 将结果保存为 JSON 文件。该 JSON 的字段和类型必须符合 `node.output_schema` 指向的 Schema。
+## 什么是稳定核心
 
-例如，输出 Schema 要求顶层包含一个 `records` 数组时，`output.json` 可以写成：
+稳定核心保存 Skill 的固定行为；
 
-```json
-{
-  "records": []
-}
-```
-
-保存文件后调用：
-
-```bash
-python3 scripts/runner.py submit \
-  --state-id "example-state-id" \
-  --node-id "lookup-record" \
-  --output "output.json"
-```
-
-`submit` 表示“这是外部动作产生的候选输出，请 Runner 校验”。Runner 仍会检查输出 Schema、validator 和后续完成条件；提交动作本身不会绕过校验或直接宣布完成。
-
-外部动作没有产生可接受结果时，Agent 调用 `fail` 并报告失败类型和原因：
-
-```bash
-python3 scripts/runner.py fail \
-  --state-id "example-state-id" \
-  --node-id "lookup-record" \
-  --kind "retryable" \
-  --message "声明的外部动作没有返回可用结果。"
-```
-
-| `fail --kind` 取值 | 含义 | Runner 的处理 |
-|---|---|---|
-| `retryable` | 当前失败可能通过再次执行同一节点解决。 | 在 `max_retries` 范围内重试，次数耗尽后使用已声明的 fallback 或进入 `failed`。 |
-| `fallback` | 当前动作不适合继续执行，需要使用预先声明的替代节点。 | 进入 `fallback` 指定的节点；未声明 fallback 时进入 `failed`。 |
-| `user-required` | 当前动作必须等待用户亲自完成必要操作。 | 进入 `waiting-user`，等待用户完成后调用 `resume`。 |
-| `fatal` | 当前错误不允许继续执行。 | 立即进入 `failed` 并保存错误信息。 |
-
-`submit` 用于交付候选结果，`fail` 用于报告无法交付合格结果。两条命令都由 Runner 根据既定工作流决定下一状态。
-
-## 失败处理
-
-- **重试**：同一节点在 `max_retries` 范围内重新执行。
-- **fallback**：当前节点失败后进入已声明的替代节点。
-- **等待用户**：状态暂停，用户完成必要操作后恢复。
-- **停止**：安全条件触发、致命错误发生或重试耗尽，状态进入 `failed`。
-
-所有失败路径必须产生结构化错误状态。失败状态禁止转换为完成状态。
-
-## 稳定核心与学习边界
-
-稳定核心包括：
+它包括：
 
 - `workflow.yaml`；
 - Schema；
 - executor 和 validator；
 - `SKILL.md`；
-- 权限、确认和停止规则；
 - Runtime 脚本；
-- 强制验证与安全配置。
+- 权限、确认和停止规则；
+- 强制安全配置；
 
-运行时学习禁止写入稳定核心。每个完成或用户暂停的状态最多产生一条脱敏学习事件。
+`.core-lock.json` 保存这些文件的 SHA-256 清单；内容发生未登记变化时，Runner 硬停止；
 
-达到默认的 32 条事件阈值后：
+经过审查的核心修改需要更新版本、运行测试并重新生成核心锁；
 
-1. 原始事件完整写入按内容寻址的归档；
-2. 归档成功后截断活跃账本；
-3. 规范化后相同的经验进行确定性合并；
-4. 活跃建议规则限制为最多 16 条；
-5. 完整原始信息保存在归档中；提交学习变更后进入 Git 历史。
+## 学习为什么不能直接修改核心
 
-活跃建议规则禁止改变节点顺序、权限、确认要求、validator 和停止条件。核心晋升必须经过提案、反例审查、回归测试、版本升级、人工批准和核心锁重建。
+运行经验可能来自偶然情况，也可能包含不可信输入；
 
-## 核心锁
+学习系统只把脱敏经验写入 `learning/`；活跃规则只提供建议；
 
-`.core-lock.json` 记录稳定核心文件的 SHA-256 哈希。Runner 在开始和恢复执行前验证清单。任何差异触发硬停止。
+学习规则进入稳定核心前，需要提案、反例审查、测试、版本变更、人工批准和新的核心锁；
 
-核心锁提供完整性漂移检测。身份认证、恶意写入防护和来源证明由 Git 历史、仓库权限、受保护分支、固定依赖的 CI 和签名发布承担。
+完整过程由 [受控学习](learning.md) 逐步解释；
 
-Runner 的确认状态负责阻止自动继续。宿主和 Agent 必须在取得用户真实确认后调用 `approve`。
+## 接下来读什么
 
-## 初始草稿状态
+| 你的目标 | 下一份文档 |
+|---|---|
+| 填写工作流字段 | [Workflow 精确参考](workflow-reference.md) |
+| 查找文件职责 | [文件地图](file-map.md) |
+| 理解学习记录和晋升 | [受控学习](learning.md) |
+| 修改或发布版本 | [版本与维护](maintenance.md) |
+| 审查安全边界 | [安全策略](../SECURITY.md) |
 
-新生成仓库包含以下配置：
-
-```json
-{
-  "definition": {
-    "configured": false
-  }
-}
-```
-
-该状态表示领域工作流尚未完成。Runner 必须拒绝执行。
-
-切换为 `true` 前必须完成：
-
-1. 定义最小支持范围和排除范围；
-2. 定义全部节点和执行器；
-3. 定义全部输入输出 Schema；
-4. 添加成功、失败和相邻非触发测试；
-5. 完成安全审查；
-6. 重建并验证核心锁。
-
-## 架构审计要求
-
-审计必须验证：
-
-- 每条强制规则具有对应代码实现；
-- Agent 无法通过 Runner 命令跳过节点或 validator；
-- 外部写入和破坏性操作进入确认状态；
-- 重试、fallback 和总执行时间均具有上限；
-- 学习脚本的写入范围限定为 `learning/`；
-- 原始事件在账本截断前完成归档；
-- 稳定核心变更触发核心锁不匹配；
-- 每项安全承诺具有对应失败路径测试。
-
-依赖 Agent 遵循的规则必须标记为协议约束。由代码强制执行的规则必须具有验证器和回归测试。
+读者能够独立复述“用户提出请求、Agent 准备数据、Runner 控制节点、检查通过后完成”时，本页目标已经达成；
