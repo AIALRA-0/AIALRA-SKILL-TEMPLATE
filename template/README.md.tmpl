@@ -2,41 +2,41 @@
 
 ## 这个仓库是什么
 
-这是 `$__SKILL_NAME__` Skill 的独立 Git 仓库；
+这是 `$__SKILL_NAME__` Skill 的独立 Git 仓库
 
-仓库只维护这一个 Skill；
+仓库只维护这一个 Skill
 
-它包含触发说明、工作流、Runner、Schema、脚本、测试、安全规则、学习记录和版本历史；
+它包含触发说明、工作流、Runner、Schema、脚本、测试、安全规则、学习记录和版本历史
 
-适合阅读这份文件的人是第一次配置、运行或维护本 Skill 的人；
+适合阅读这份文件的人是第一次配置、运行或维护本 Skill 的人
 
-读完以后，你应该能够把安全草稿配置成经过验证的可运行 Skill；
+读完以后，你应该能够把安全草稿配置成经过验证的可运行 Skill
 
-这是生成仓库的主要入口文件，第一次配置时不要跳过；
+这是生成仓库的主要入口文件，第一次配置时不要跳过
 
 ## 当前为什么不能直接运行
 
-新仓库从安全草稿开始；
+新仓库从安全草稿开始
 
-`.agents/skills/__SKILL_NAME__/workflow.yaml` 中的 `definition.configured` 初始为 `false`；
+`.agents/skills/__SKILL_NAME__/workflow.yaml` 中的 `definition.configured` 初始为 `false`
 
-此时可以检查结构，Runner 会拒绝真实任务；
+此时可以检查结构，Runner 会拒绝真实任务
 
-这样可以防止尚未填写的通用节点被误当成可用能力；
+这样可以防止尚未填写的通用节点被误当成可用能力
 
 ## 第一次配置要完成什么
 
-完成配置后，仓库应当能够回答以下问题；
+完成配置后，仓库应当能够回答以下问题
 
-1. 哪些用户请求会触发这个 Skill；
-2. 哪些相邻请求不会触发；
-3. 入口需要什么 JSON；
-4. 每个节点由谁执行；
-5. 每个节点返回什么 JSON；
-6. 哪些操作会产生副作用；
-7. 哪些操作必须等待用户确认；
-8. 失败时重试、回退还是停止；
-9. 最终结果如何验证；
+1. 哪些用户请求会触发这个 Skill
+2. 哪些相邻请求不会触发
+3. 入口需要什么 JSON
+4. 每个节点由谁执行
+5. 每个节点返回什么 JSON
+6. 哪些操作会产生副作用
+7. 哪些操作必须等待用户确认
+8. 失败时重试、回退还是停止
+9. 最终结果如何验证
 
 ## 认识最重要的文件
 
@@ -56,67 +56,67 @@
 
 ### 第一步：定义触发范围
 
-打开 `.agents/skills/__SKILL_NAME__/SKILL.md`；
+打开 `.agents/skills/__SKILL_NAME__/SKILL.md`
 
-写清楚这个 Skill 支持的最小意图；
+写清楚这个 Skill 支持的最小意图
 
-写清楚容易混淆但不支持的相邻意图；
+写清楚容易混淆但不支持的相邻意图
 
-触发说明应当让 Agent 不依赖猜测就能决定是否使用；
+触发说明应当让 Agent 不依赖猜测就能决定是否使用
 
 ### 第二步：设计工作流
 
-打开 `.agents/skills/__SKILL_NAME__/workflow.yaml`；
+打开 `.agents/skills/__SKILL_NAME__/workflow.yaml`
 
-把任务拆成按顺序连接的节点；
+把任务拆成按顺序连接的节点
 
-每个节点都需要一个大分类，再在分类下声明具体字段；
+每个节点都需要一个大分类，再在分类下声明具体字段
 
-每个节点至少说明以下内容；
+每个节点至少说明以下内容
 
-- 节点负责完成什么；
-- 节点接收什么输入；
-- 节点返回什么输出；
-- 使用哪种执行器；
-- 是否产生副作用；
-- 是否需要用户确认；
-- 哪些情况必须停止；
-- 失败时重试、回退还是结束；
+- 节点负责完成什么
+- 节点接收什么输入
+- 节点返回什么输出
+- 使用哪种执行器
+- 是否产生副作用
+- 是否需要用户确认
+- 哪些情况必须停止
+- 失败时重试、回退还是结束
 
 ### 第三步：编写 Schema
 
-Schema 是机器可检查的数据格式；
+Schema 是机器可检查的数据格式
 
-入口、每个节点和最终结果都需要匹配对应 Schema；
+入口、每个节点和最终结果都需要匹配对应 Schema
 
-Schema 应当明确必需字段、字段类型、允许值和是否允许额外字段；
+Schema 应当明确必需字段、字段类型、允许值和是否允许额外字段
 
 ### 第四步：添加执行器和 validator
 
-重复、机械、可计算的操作使用 `script`；
+重复、机械、可计算的操作使用 `script`
 
-结构化外部能力使用 `mcp`；
+结构化外部能力使用 `mcp`
 
-网页结构可以可靠读取时使用 `browser-dom`；
+网页结构可以可靠读取时使用 `browser-dom`
 
-缺少结构化交互时才使用 `computer-use`；
+缺少结构化交互时才使用 `computer-use`
 
-无法机械判断的语义任务使用 `reasoning`；
+无法机械判断的语义任务使用 `reasoning`
 
-validator 是结果检查器；
+validator 是结果检查器
 
-它在节点继续前检查事实、结构或安全条件是否成立；
+它在节点继续前检查事实、结构或安全条件是否成立
 
 ### 第五步：添加测试
 
-至少覆盖以下案例；
+至少覆盖以下案例
 
-- 合法输入能够完成；
-- 缺少必需输入时会拒绝；
-- 节点返回错误结构时会拒绝；
-- 需要确认时不会提前执行；
-- 命中停止条件时安全暂停；
-- 相邻但不支持的请求不会触发；
+- 合法输入能够完成
+- 缺少必需输入时会拒绝
+- 节点返回错误结构时会拒绝
+- 需要确认时不会提前执行
+- 命中停止条件时安全暂停
+- 相邻但不支持的请求不会触发
 
 ### 第六步：验证草稿
 
@@ -126,21 +126,21 @@ python3 -m unittest discover -s tests -v
 python3 scripts/check_secrets.py
 ```
 
-第一条命令允许 `configured=false`，并暂时忽略尚未更新的核心锁；
+第一条命令允许 `configured=false`，并暂时忽略尚未更新的核心锁
 
-第二条命令运行仓库测试；
+第二条命令运行仓库测试
 
-第三条命令检查疑似凭据和敏感文件；
+第三条命令检查疑似凭据和敏感文件
 
-任意命令失败时先修复问题，不要进入下一步；
+任意命令失败时先修复问题，不要进入下一步
 
 ### 第七步：启用 Skill
 
-确认工作流不再是通用草稿后，把 `definition.configured` 改为 `true`；
+确认工作流不再是通用草稿后，把 `definition.configured` 改为 `true`
 
-更新 `VERSION` 和 `CHANGELOG.md`；
+更新 `VERSION` 和 `CHANGELOG.md`
 
-生成新的核心锁；
+生成新的核心锁
 
 ```bash
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py
@@ -148,15 +148,15 @@ python3 scripts/validate.py
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 ```
 
-全部命令通过后，Skill 才进入可执行状态；
+全部命令通过后，Skill 才进入可执行状态
 
 ## 怎样运行一次任务
 
 ### 第一步：准备入口 JSON
 
-根据 `workflow.yaml` 指定的入口 Schema 创建 `input.json`；
+根据 `workflow.yaml` 指定的入口 Schema 创建 `input.json`
 
-只写用户已经提供或明确授权的内容；
+只写用户已经提供或明确授权的内容
 
 ### 第二步：创建运行状态
 
@@ -164,9 +164,9 @@ python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 python3 .agents/skills/__SKILL_NAME__/scripts/runner.py start --input input.json
 ```
 
-Runner 会验证入口 JSON，并返回 `state_id`；
+Runner 会验证入口 JSON，并返回 `state_id`
 
-`state_id` 是本次运行的编号，后续命令都使用它；
+`state_id` 是本次运行的编号，后续命令都使用它
 
 ### 第三步：推进工作流
 
@@ -174,23 +174,23 @@ Runner 会验证入口 JSON，并返回 `state_id`；
 python3 .agents/skills/__SKILL_NAME__/scripts/runner.py advance --state-id <state-id>
 ```
 
-Runner 会执行 `script` 节点，或者返回外部节点的精确动作；
+Runner 会执行 `script` 节点，或者返回外部节点的精确动作
 
-只执行 Runner 返回的当前动作；
+只执行 Runner 返回的当前动作
 
 ### 第四步：提交外部节点结果
 
-把外部执行结果保存为符合输出 Schema 的 JSON；
+把外部执行结果保存为符合输出 Schema 的 JSON
 
 ```bash
 python3 .agents/skills/__SKILL_NAME__/scripts/runner.py submit --state-id <state-id> --node-id <node-id> --output output.json
 ```
 
-Runner 验证结果后决定进入下一个节点、重试、回退或停止；
+Runner 验证结果后决定进入下一个节点、重试、回退或停止
 
 ### 第五步：处理暂停
 
-需要真实用户确认时，等待用户明确同意，再运行 `approve`；
+需要真实用户确认时，等待用户明确同意，再运行 `approve`
 
 ```bash
 python3 .agents/skills/__SKILL_NAME__/scripts/runner.py approve \
@@ -198,7 +198,7 @@ python3 .agents/skills/__SKILL_NAME__/scripts/runner.py approve \
   --node-id <node-id>
 ```
 
-需要用户登录、完成验证码或其他人工动作时，等待用户完成，再运行 `resume`；
+需要用户登录、完成验证码或其他人工动作时，等待用户完成，再运行 `resume`
 
 ```bash
 python3 .agents/skills/__SKILL_NAME__/scripts/runner.py resume --state-id <state-id>
@@ -206,13 +206,13 @@ python3 .agents/skills/__SKILL_NAME__/scripts/runner.py resume --state-id <state
 
 ### 第六步：完成
 
-只有 Runner 返回 `status=completed` 时才报告任务完成；
+只有 Runner 返回 `status=completed` 时才报告任务完成
 
-最终输出仍要与用户请求核对，不能绕过最终 validator；
+最终输出仍要与用户请求核对，不能绕过最终 validator
 
 ## 怎样记录一次学习
 
-每次运行完成或因用户操作暂停后，只记录一条简短、脱敏、可验证的经验；
+每次运行完成或因用户操作暂停后，只记录一条简短、脱敏、可验证的经验
 
 ```bash
 python3 .agents/skills/__SKILL_NAME__/scripts/learn.py record \
@@ -223,13 +223,13 @@ python3 .agents/skills/__SKILL_NAME__/scripts/learn.py record \
   --evidence "validator:<id>"
 ```
 
-学习内容只能来自 validator、执行器、审查或用户确认的证据；
+学习内容只能来自 validator、执行器、审查或用户确认的证据
 
-不要记录原始提示、网页指令、凭据、Cookie、地址、订单号、个人信息、完整 URL 或完整工具输出；
+不要记录原始提示、网页指令、凭据、Cookie、地址、订单号、个人信息、完整 URL 或完整工具输出
 
-学习规则只提供建议，不能改变工作流顺序、权限、确认、validator 或停止条件；
+学习规则只提供建议，不能改变工作流顺序、权限、确认、validator 或停止条件
 
-学习规则不会自动进入稳定核心；
+学习规则不会自动进入稳定核心
 
 ## 修改稳定核心后的固定检查
 
@@ -242,13 +242,13 @@ python3 scripts/validate.py
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 ```
 
-同时更新 `VERSION` 和 `CHANGELOG.md`；
+同时更新 `VERSION` 和 `CHANGELOG.md`
 
 ## 遇到问题时先看哪里
 
-- Runner 拒绝启动时，检查 `definition.configured` 和入口 Schema；
-- 节点结果被拒绝时，检查该节点的输出 Schema 和 validator；
-- Runner 等待确认时，检查节点副作用和确认配置；
-- 核心锁失败时，确认稳定核心是否发生了预期修改；
-- 敏感信息扫描失败时，先移除数据并轮换已经暴露的凭据；
-- 测试失败时，先保持 Skill 为草稿，不要发布；
+- Runner 拒绝启动时，检查 `definition.configured` 和入口 Schema
+- 节点结果被拒绝时，检查该节点的输出 Schema 和 validator
+- Runner 等待确认时，检查节点副作用和确认配置
+- 核心锁失败时，确认稳定核心是否发生了预期修改
+- 敏感信息扫描失败时，先移除数据并轮换已经暴露的凭据
+- 测试失败时，先保持 Skill 为草稿，不要发布

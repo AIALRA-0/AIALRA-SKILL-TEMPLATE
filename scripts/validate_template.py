@@ -54,8 +54,19 @@ def documentation_style_errors(root: Path) -> list[str]:
         text = path.read_text(encoding="utf-8")
         if "。" in text:
             errors.append(
-                f"documentation uses Chinese full stop instead of semicolon: {path.relative_to(root)}"
+                f"documentation uses a prohibited Chinese full stop: {path.relative_to(root)}"
             )
+        for line_number, line in enumerate(text.splitlines(), start=1):
+            closing_marks = r'["”’）)\]】`*_]*'
+            terminal_semicolon = re.search(
+                rf"；{closing_marks}[,\\]?\s*$|；{closing_marks}\s*\|", line
+            ) is not None
+            if terminal_semicolon:
+                errors.append(
+                    "documentation uses a semicolon at a paragraph or displayed-item ending: "
+                    f"{path.relative_to(root)}:{line_number}"
+                )
+                break
     return errors
 
 

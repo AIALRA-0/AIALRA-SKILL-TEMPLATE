@@ -171,16 +171,24 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             )
             self.assertEqual("error", error["status"])
 
-    def test_documentation_style_rejects_chinese_full_stops(self) -> None:
+    def test_documentation_style_rejects_prohibited_terminal_punctuation(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             document = root / "example.md"
-            document.write_text("一句说明；\n", encoding="utf-8")
+            document.write_text("一句说明；补充说明\n", encoding="utf-8")
             self.assertEqual([], documentation_style_errors(root))
             document.write_text("一句说明。\n", encoding="utf-8")
             errors = documentation_style_errors(root)
             self.assertEqual(1, len(errors))
             self.assertIn("example.md", errors[0])
+            document.write_text("一句说明；\n", encoding="utf-8")
+            errors = documentation_style_errors(root)
+            self.assertEqual(1, len(errors))
+            self.assertIn("example.md:1", errors[0])
+            document.write_text("| 字段 | 说明； |\n", encoding="utf-8")
+            errors = documentation_style_errors(root)
+            self.assertEqual(1, len(errors))
+            self.assertIn("example.md:1", errors[0])
 
     def test_sensitive_scanner_does_not_trust_example_variable_names(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
