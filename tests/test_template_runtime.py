@@ -697,6 +697,41 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             self.assertEqual("fatal", failed["error"]["kind"])
             self.assertIn("Current node input is invalid", failed["error"]["message"])
 
+    def test_local_installer_links_full_repository_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            repo = self.create_repository(parent)
+            destination_root = parent / "installed-skills"
+            payload = run_json(
+                [
+                    sys.executable,
+                    "scripts/install_local.py",
+                    "--dest",
+                    str(destination_root),
+                ],
+                repo,
+            )
+            destination = destination_root / "normalize-text-skill"
+            source = repo / ".agents" / "skills" / "normalize-text-skill"
+            self.assertTrue(payload["installed"])
+            self.assertEqual("symlink", payload["method"])
+            self.assertTrue(destination.is_symlink())
+            self.assertEqual(source.resolve(), destination.resolve())
+            repeated = subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/install_local.py",
+                    "--dest",
+                    str(destination_root),
+                ],
+                cwd=repo,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(2, repeated.returncode)
+            self.assertIn("Refusing to replace", repeated.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

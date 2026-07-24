@@ -152,6 +152,24 @@ python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 
 ## 怎样运行一次任务
 
+### 先让 Codex 发现本地 Skill
+
+本 Runtime 需要仓库根目录中的核心锁、版本、学习目录和运行状态目录
+
+使用仓库自带安装器创建本地符号链接：
+
+```bash
+python3 scripts/install_local.py
+```
+
+安装器把 `~/.codex/skills/__SKILL_NAME__` 链接到当前仓库中的真实 Skill 目录
+
+它不会复制仓库，也不会覆盖已经存在的同名路径
+
+移动或删除当前仓库会使链接失效
+
+安装完成后，Skill 会在 Codex 的下一轮任务中可用
+
 ### 第一步：准备入口 JSON
 
 根据 `workflow.yaml` 指定的入口 Schema 创建 `input.json`
