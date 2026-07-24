@@ -32,6 +32,7 @@ from runtime_lib import (
 
 
 COMPLETE = "__complete__"
+FAILURE_KINDS = ("retryable", "fallback", "user-required", "policy-blocked", "fatal")
 
 
 def now_iso() -> str:
@@ -81,6 +82,26 @@ def directive(
         },
         "input": state["current_input"],
         "failure_context": state.get("last_error"),
+        "failure_submission": (
+            {
+                "allowed_kinds": list(FAILURE_KINDS),
+                "command_argv": [
+                    "python3",
+                    "scripts/runner.py",
+                    "fail",
+                    "--state-id",
+                    state["state_id"],
+                    "--node-id",
+                    node["id"],
+                    "--kind",
+                    "<kind>",
+                    "--message",
+                    "<brief reason>",
+                ],
+            }
+            if node["executor"] != "script"
+            else None
+        ),
         "advisory_rules": load_active_rules(root),
         "priority": "Stable core and user instructions override advisory learning rules.",
         "next_command": (
@@ -88,7 +109,7 @@ def directive(
             if state["status"] == "running"
             else "obtain explicit user confirmation, then approve"
             if state["status"] == "waiting-confirmation"
-            else "execute only the declared action, save schema-valid JSON, then submit"
+            else "execute only the declared action, then use submit or failure_submission"
             if state["status"] == "waiting-external"
             else "follow the returned state without bypassing the runner"
         ),
@@ -230,7 +251,7 @@ def handle_failure(
         state["status"] = "running"
         return
     fallback = node.get("fallback")
-    if kind in {"retryable", "fallback"} and fallback:
+    if kind in {"retryable", "fallback", "policy-blocked"} and fallback:
         state["current_node"] = fallback
         state["status"] = "running"
         return
@@ -294,6 +315,22 @@ def advance(args: argparse.Namespace) -> dict[str, Any]:
     while state["status"] == "running":
         check_limits(state, workflow)
         node = nodes[state["current_node"]]
+        input_errors = validate_schema(
+            state["current_input"], schema_for(skill_dir, node["input_schema"])
+        )
+        if input_errors:
+            handle_failure(
+                state,
+                node,
+                "fatal",
+                "Current node input is invalid: " + "; ".join(input_errors),
+            )
+            save_state(root, state)
+            return {
+                "state_id": state["state_id"],
+                "status": state["status"],
+                "error": state["last_error"],
+            }
         if node["requires_confirmation"] and node["id"] not in state["approved_nodes"]:
             state["status"] = "waiting-confirmation"
             state["waiting_since"] = now_iso()
@@ -451,7 +488,7 @@ def build_parser() -> argparse.ArgumentParser:
     fail_parser.add_argument("--state-id", required=True)
     fail_parser.add_argument("--node-id", required=True)
     fail_parser.add_argument(
-        "--kind", required=True, choices=("retryable", "fallback", "user-required", "fatal")
+        "--kind", required=True, choices=FAILURE_KINDS
     )
     fail_parser.add_argument("--message", required=True)
     fail_parser.set_defaults(handler=fail)

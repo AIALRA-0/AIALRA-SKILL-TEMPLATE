@@ -175,7 +175,8 @@
   "on_success": "prepare-result", // 成功后进入下一节点
   "stop_conditions": [ // Agent 必须检查的文字条件
     "无法访问必需数据源时报告 fallback",
-    "出现身份验证要求时报告 user-required"
+    "出现身份验证要求时报告 user-required",
+    "宿主策略禁止动作时报告 policy-blocked"
   ]
 }
 ```
@@ -437,6 +438,7 @@ python3 scripts/runner.py fail \
 | `retryable` | 再次执行同一节点可能解决 | 在重试范围内重试，之后回退或失败 |
 | `fallback` | 当前动作需要进入预设替代路径 | 进入 `fallback`，不存在时失败 |
 | `user-required` | 必须等待用户亲自操作 | 进入 `waiting-user` |
+| `policy-blocked` | 宿主安全策略明确禁止当前动作 | 进入 `fallback`，不存在时失败 |
 | `fatal` | 当前错误不允许继续 | 立即进入 `failed` |
 
 ### `resume`
@@ -477,11 +479,37 @@ Runner 返回：
       }
     },
     "output_schema": "schemas/records.schema.json"
+  },
+  "failure_submission": {
+    "allowed_kinds": [
+      "retryable",
+      "fallback",
+      "user-required",
+      "policy-blocked",
+      "fatal"
+    ],
+    "command_argv": [
+      "python3",
+      "scripts/runner.py",
+      "fail",
+      "--state-id",
+      "example-state-id",
+      "--node-id",
+      "lookup-record",
+      "--kind",
+      "<kind>",
+      "--message",
+      "<brief reason>"
+    ]
   }
 }
 ```
 
 Agent 或宿主只执行 `node.executor` 和 `node.action` 指定的动作
+
+`failure_submission.command_argv` 是失败时可以直接使用的命令参数数组
+
+数组中的 `<kind>` 和 `<brief reason>` 需要替换成真实失败类型和简短原因
 
 假设输出 Schema 要求顶层包含 `records` 数组，`output.json` 可以写成：
 
@@ -494,6 +522,16 @@ Agent 或宿主只执行 `node.executor` 和 `node.action` 指定的动作
 保存文件后调用 `submit`；Runner 校验成功后进入下一节点或最终验证
 
 外部动作无法产生合格 JSON 时调用 `fail`
+
+## 节点输入再次检查
+
+节点通过成功边或回退边成为当前节点以后，Runner 会再次读取该节点的 `input_schema`
+
+当前输入不符合 Schema 时，Runner 以 `fatal` 失败停止
+
+这个检查防止前一个节点或回退路径把错误形状的数据交给当前执行器
+
+工作流维护者必须让每一条成功边和回退边的输出能够满足目标节点输入
 
 ## 图结构规则
 

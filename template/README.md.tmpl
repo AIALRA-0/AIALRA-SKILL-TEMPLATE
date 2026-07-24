@@ -188,6 +188,10 @@ python3 .agents/skills/__SKILL_NAME__/scripts/runner.py submit --state-id <state
 
 Runner 验证结果后决定进入下一个节点、重试、回退或停止
 
+外部动作失败时，使用 Runner 返回的 `failure_submission.command_argv`
+
+宿主策略禁止当前动作时选择 `policy-blocked`，不要改用规避策略的执行方式
+
 ### 第五步：处理暂停
 
 需要真实用户确认时，等待用户明确同意，再运行 `approve`

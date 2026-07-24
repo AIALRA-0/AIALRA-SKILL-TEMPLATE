@@ -584,6 +584,119 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             self.assertIn("unreachable", joined)
             self.assertIn("cycle", joined)
 
+    def test_policy_blocked_failure_uses_declared_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = self.create_repository(Path(temporary))
+            skill = self.configure_deterministic_workflow(repo)
+            workflow_path = skill / "workflow.yaml"
+            workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+            recovery = workflow["execution"]["graph"]["nodes"][0]
+            external = {
+                **recovery,
+                "id": "external-read",
+                "executor": "mcp",
+                "action": {
+                    "name": "example.read",
+                    "arguments": {"from": "node-input"},
+                },
+                "command": None,
+                "side_effect": "read",
+                "max_retries": 0,
+                "fallback": "normalize-text",
+                "on_success": "__complete__",
+            }
+            del external["command"]
+            workflow["execution"]["graph"]["entry_node"] = "external-read"
+            workflow["execution"]["graph"]["nodes"] = [external, recovery]
+            workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
+            run_json([sys.executable, str(skill / "scripts" / "freeze_core.py")], repo)
+            input_file = repo / "input.json"
+            input_file.write_text('{"text":" alpha   beta "}\n', encoding="utf-8")
+            started = run_json(
+                [sys.executable, str(skill / "scripts" / "runner.py"), "start", "--input", str(input_file)],
+                repo,
+            )
+            waiting = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "runner.py"),
+                    "advance",
+                    "--state-id",
+                    started["state_id"],
+                ],
+                repo,
+            )
+            self.assertEqual("waiting-external", waiting["status"])
+            failure_submission = waiting["failure_submission"]
+            self.assertIn("policy-blocked", failure_submission["allowed_kinds"])
+            self.assertEqual("python3", failure_submission["command_argv"][0])
+            fallback = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "runner.py"),
+                    "fail",
+                    "--state-id",
+                    started["state_id"],
+                    "--node-id",
+                    "external-read",
+                    "--kind",
+                    "policy-blocked",
+                    "--message",
+                    "host policy denied the declared read",
+                ],
+                repo,
+            )
+            self.assertEqual("normalize-text", fallback["node"]["id"])
+            completed = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "runner.py"),
+                    "advance",
+                    "--state-id",
+                    started["state_id"],
+                ],
+                repo,
+            )
+            self.assertEqual("completed", completed["status"])
+            self.assertEqual("alpha beta", completed["final_output"]["normalized"])
+
+    def test_runner_rechecks_each_node_input_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = self.create_repository(Path(temporary))
+            skill = self.configure_deterministic_workflow(repo)
+            workflow_path = skill / "workflow.yaml"
+            workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+            first = workflow["execution"]["graph"]["nodes"][0]
+            first["on_success"] = "second-normalize"
+            second = {
+                **first,
+                "id": "second-normalize",
+                "on_success": "__complete__",
+            }
+            workflow["execution"]["graph"]["nodes"] = [first, second]
+            workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
+            run_json([sys.executable, str(skill / "scripts" / "freeze_core.py")], repo)
+            input_file = repo / "input.json"
+            input_file.write_text('{"text":" alpha   beta "}\n', encoding="utf-8")
+            started = run_json(
+                [sys.executable, str(skill / "scripts" / "runner.py"), "start", "--input", str(input_file)],
+                repo,
+            )
+            failed = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "runner.py"),
+                    "advance",
+                    "--state-id",
+                    started["state_id"],
+                ],
+                repo,
+                expected_code=1,
+            )
+            self.assertEqual("failed", failed["status"])
+            self.assertEqual("fatal", failed["error"]["kind"])
+            self.assertIn("Current node input is invalid", failed["error"]["message"])
+
 
 if __name__ == "__main__":
     unittest.main()

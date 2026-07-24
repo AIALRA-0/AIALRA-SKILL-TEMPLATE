@@ -63,7 +63,11 @@ python3 scripts/runner.py fail \
   --message "<简短失败原因>"
 ```
 
-`--kind` 只允许 `retryable`、`fallback`、`user-required` 或 `fatal`
+`--kind` 只允许 `retryable`、`fallback`、`user-required`、`policy-blocked` 或 `fatal`
+
+Runner 返回的 `failure_submission.command_argv` 已经包含当前状态编号和节点编号
+
+宿主策略明确禁止当前动作时使用 `policy-blocked`
 
 ### 第五步：处理暂停
 
@@ -122,6 +126,7 @@ python3 scripts/learn.py record \
 - 输出不符合 Schema 时不要提交，先修正或报告失败
 - validator 失败时遵守工作流声明的重试、回退或停止规则
 - 权限不足时停止，不扩大授权
+- 宿主策略禁止当前动作时使用 `policy-blocked`，不得换用规避策略的执行方式
 - 命中停止条件时保持暂停
 - 核心锁不一致时停止运行，并交给维护流程处理
 
