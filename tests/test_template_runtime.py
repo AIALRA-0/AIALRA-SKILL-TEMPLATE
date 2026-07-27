@@ -332,6 +332,43 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             self.assertNotIn("sensitive-value", result.stderr)
             self.assertIn("value redacted", result.stderr)
 
+    def test_sensitive_scanner_recurses_through_explicit_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = self.create_repository(Path(temporary))
+            evidence = repo / "nested" / "evidence"
+            evidence.mkdir(parents=True)
+            candidate = evidence / "credentials.txt"
+            candidate.write_text(
+                'access_token = "' + ("sensitive-value-" * 2) + '"\n',
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, "scripts/check_secrets.py", str(repo / "nested")],
+                cwd=repo,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertNotIn("sensitive-value", result.stderr)
+            self.assertIn("nested/evidence/credentials.txt", result.stderr)
+            self.assertIn("value redacted", result.stderr)
+
+    def test_sensitive_scanner_rejects_empty_explicit_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = self.create_repository(Path(temporary))
+            empty = repo / "empty"
+            empty.mkdir()
+            result = subprocess.run(
+                [sys.executable, "scripts/check_secrets.py", str(empty)],
+                cwd=repo,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(2, result.returncode)
+            self.assertIn("no eligible files", result.stderr)
+
     def test_runner_executes_deterministic_graph(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = self.create_repository(Path(temporary))

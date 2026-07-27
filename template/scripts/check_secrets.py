@@ -70,8 +70,14 @@ def iter_paths(arguments: list[str]) -> list[Path]:
             candidate = Path(argument)
             if not candidate.is_absolute():
                 candidate = root / candidate
-            if candidate.is_file() and not is_ignored(candidate):
+            if candidate.is_file() and not candidate.is_symlink() and not is_ignored(candidate):
                 paths.append(candidate)
+            elif candidate.is_dir() and not candidate.is_symlink() and not is_ignored(candidate):
+                paths.extend(
+                    path
+                    for path in candidate.rglob("*")
+                    if path.is_file() and not path.is_symlink() and not is_ignored(path)
+                )
         return sorted(set(paths))
     return sorted(
         path
@@ -109,6 +115,12 @@ def scan_file(path: Path) -> list[tuple[int, str]]:
 def main() -> int:
     root = repository_root()
     paths = iter_paths(sys.argv[1:])
+    if sys.argv[1:] and not paths:
+        print(
+            "Sensitive-data scan found no eligible files in the explicit target(s).",
+            file=sys.stderr,
+        )
+        return 2
     findings: list[tuple[Path, int, str]] = []
     for path in paths:
         for line_number, rule in scan_file(path):
