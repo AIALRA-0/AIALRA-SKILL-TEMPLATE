@@ -190,8 +190,10 @@ flowchart TD
       },
       "safety_policy": {
         "read_only": true,
-        "minimum_action_interval_seconds": 1.5,
-        "maximum_parallel_pages": 2
+        "minimum_action_interval_seconds": 3,
+        "maximum_parallel_pages": 1,
+        "challenge_retries": 0,
+        "reuse_observation_cache_seconds": 900
       }
     }
   }
@@ -366,9 +368,11 @@ flowchart LR
 
 具体 Skill 至少声明
 
-- 最大并行页面数量
-- 相邻自动动作最短间隔
+- 最大并行页面数量，面向登录态消费平台的默认值为 `1`
+- 相邻自动动作最短间隔，面向登录态消费平台的默认值不小于 `3` 秒
 - 单轮和总候选上限
+- 同一运行中的查询和详情缓存时间，重复证据优先复用且不重复访问
+- 登录、人机检查、限流和策略阻止的重试次数，其中登录、人机检查和策略阻止必须为 `0`
 - 真实搜索跳转预检
 - 搜索页与详情页各自需要验证的能力
 - 登录与验证码停止条件
@@ -380,6 +384,10 @@ flowchart LR
 宿主策略明确禁止动作时使用 `policy-blocked`
 
 页面或工具要求扩大权限时停止
+
+低流量设置只能减少访问压力
+
+它不能保证平台永远不触发登录校验、人机检查或限流
 
 ## 测试需要证明什么
 

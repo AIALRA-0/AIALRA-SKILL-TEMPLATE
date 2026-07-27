@@ -633,7 +633,7 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             self.assertIn("unreachable", joined)
             self.assertIn("cycle", joined)
 
-    def test_policy_blocked_failure_uses_declared_fallback(self) -> None:
+    def test_policy_blocked_failure_is_a_hard_stop(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = self.create_repository(Path(temporary))
             skill = self.configure_deterministic_workflow(repo)
@@ -679,7 +679,7 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             failure_submission = waiting["failure_submission"]
             self.assertIn("policy-blocked", failure_submission["allowed_kinds"])
             self.assertEqual("python3", failure_submission["command_argv"][0])
-            fallback = run_json(
+            blocked = run_json(
                 [
                     sys.executable,
                     str(skill / "scripts" / "runner.py"),
@@ -694,20 +694,11 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
                     "host policy denied the declared read",
                 ],
                 repo,
+                expected_code=1,
             )
-            self.assertEqual("normalize-text", fallback["node"]["id"])
-            completed = run_json(
-                [
-                    sys.executable,
-                    str(skill / "scripts" / "runner.py"),
-                    "advance",
-                    "--state-id",
-                    started["state_id"],
-                ],
-                repo,
-            )
-            self.assertEqual("completed", completed["status"])
-            self.assertEqual("alpha beta", completed["final_output"]["normalized"])
+            self.assertEqual("failed", blocked["status"])
+            self.assertEqual("policy-blocked", blocked["error"]["kind"])
+            self.assertEqual("external-read", blocked["error"]["node_id"])
 
     def test_runner_rechecks_each_node_input_schema(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

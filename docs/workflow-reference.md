@@ -507,7 +507,7 @@ python3 scripts/runner.py fail \
 | `retryable` | 再次执行同一节点可能解决 | 在重试范围内重试，之后回退或失败 |
 | `fallback` | 当前动作需要进入预设替代路径 | 进入 `fallback`，不存在时失败 |
 | `user-required` | 必须等待用户亲自操作 | 进入 `waiting-user` |
-| `policy-blocked` | 宿主安全策略明确禁止当前动作 | 进入 `fallback`，不存在时失败 |
+| `policy-blocked` | 宿主安全策略明确禁止当前动作 | 立即失败，不重试且不进入 `fallback` |
 | `fatal` | 当前错误不允许继续 | 立即进入 `failed` |
 
 ### `resume`
