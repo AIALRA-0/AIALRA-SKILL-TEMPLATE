@@ -44,6 +44,7 @@
 |---|---|
 | `docs/architecture.md` | 一次请求怎样从开始运行到完成 |
 | `docs/workflow-reference.md` | `workflow.yaml` 每个字段、状态和命令怎样填写 |
+| `docs/repeatable-collection.md` | 怎样设计多轮采集、稳定去重、详情核验和成熟后端复用 |
 | `docs/file-map.md` | 每个文件有什么用 |
 | `docs/learning.md` | 学习事件怎样记录、归档和晋升 |
 | `docs/maintenance.md` | 怎样判断版本、发布和弃用 |
@@ -159,6 +160,8 @@ Runtime 学习只能修改 `learning/`
 | 创建新 Skill 仓库 | 根目录 `README.md` |
 | 修改生成命令 | `scripts/create_skill_repo.py` |
 | 修改工作流结构 | `workflow.yaml.tmpl`、`runtime_lib.py` 和 Workflow 精确参考 |
+| 设计多轮外部研究 | `docs/repeatable-collection.md`、具体 Skill 的 Schema 和领域测试 |
+| 接入现成 MCP、CLI 或 Skill | `docs/repeatable-collection.md`、具体 Skill 的 `references/` 和后端契约测试 |
 | 修改运行状态 | `runner.py`、`runtime_lib.py` 和 Runtime 测试 |
 | 修改学习机制 | `learn.py`、`compact.py`、`promote.py` 和 `docs/learning.md` |
 | 修改核心锁 | `freeze_core.py`、`runtime_lib.py` 和安全文档 |

@@ -261,6 +261,12 @@ example-research-skill/                         # 新 Skill 的独立仓库根�
 7. 设置 `definition.configured=true` —— 只在领域流程和测试已经完成后解除安全草稿状态
 8. 更新版本并重新生成核心锁 —— 保存本次稳定行为的版本记录和 SHA-256 摘要
 
+涉及外部数据采集时，在第二项以前先调查官方接口、已连接工具、成熟 MCP、CLI 和 Skill
+
+经过许可证、权限、维护、测试、输出和依赖安全审计后，能复用的能力作为采集后端
+
+现成后端不能替代当前 Skill 的多轮覆盖、稳定去重、详情核验、停止条件和结果验证
+
 生成仓库自己的 `README.md` 会逐步解释这些操作
 
 ## 这个模板会替你守住什么
@@ -301,6 +307,7 @@ example-research-skill/                         # 新 Skill 的独立仓库根�
 |---|---|
 | 想看懂一次请求怎样运行 | [架构入门](docs/architecture.md) |
 | 准备填写 `workflow.yaml` | [Workflow 精确参考](docs/workflow-reference.md) |
+| 准备做多轮研究或复用现成工具 | [可重复采集与成熟后端复用](docs/repeatable-collection.md) |
 | 想知道每个文件有什么用 | [文件地图](docs/file-map.md) |
 | 想理解 Skill 怎样积累经验 | [受控学习](docs/learning.md) |
 | 准备升级版本或发布 | [版本与维护](docs/maintenance.md) |

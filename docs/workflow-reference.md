@@ -123,7 +123,13 @@
 
 数组至少包含一个节点；所有节点都必须从入口沿成功边或回退边到达
 
-不可达节点和环路会被验证器拒绝；重复执行使用 `max_retries` 表达
+不可达节点和环路会被验证器拒绝
+
+`max_retries` 只表达节点失败后的重新尝试
+
+结果会变化的多轮采集放在一个有上限的外部节点内部，并由该节点一次返回全部轮次
+
+多轮计划、稳定 ID、饱和判断和详情核验见 [可重复采集与成熟后端复用](repeatable-collection.md)
 
 ## 一个完整脚本节点
 
@@ -260,6 +266,47 @@ Runner 使用 argv 数组直接启动程序，并设置 `shell=false`
 - `arguments`：JSON 对象形式的动作参数或参数来源
 
 Runner 把该对象原样放入外部指令；Agent 或宿主只能执行该动作
+
+### `action.arguments.source_routing`
+
+需要在多个采集后端之间选择时，可以在 `arguments` 中增加 `source_routing` 大分类
+
+这个字段不是 Workflow IR 的强制字段
+
+它是具体 Skill 用来固定后端顺序、启用条件、读取白名单和回退路径的领域契约
+
+```jsonc
+{
+  "source_routing": {
+    "provider_order": [ // 按顺序尝试已经受支持的后端
+      "trusted-structured-provider",
+      "supported-browser"
+    ],
+    "trusted-structured-provider": { // 只有用户已经信任并连接时才可使用
+      "mode": "use-only-when-installed-connected-and-trusted",
+      "allowed_operations": [ // 当前节点允许调用的最小动作白名单
+        "domain.search"
+      ],
+      "prohibited_operation_classes": [ // 当前节点永远不能调用的动作类别
+        "account-write",
+        "credential-read"
+      ]
+    },
+    "supported-browser": { // 首选后端不可用时的受支持路径
+      "mode": "fallback",
+      "reuse_current_login_session": true
+    }
+  }
+}
+```
+
+后端不可用可以进入下一项
+
+登录、验证码、授权不足和 `policy-blocked` 不能通过切换后端绕过
+
+每个后端都必须返回同一个节点声明的 `output_schema`
+
+第三方后端的许可证、权限、维护、测试、输出和依赖安全需要在具体 Skill 的 `references/` 中留下审计记录
 
 ### `side_effect`
 

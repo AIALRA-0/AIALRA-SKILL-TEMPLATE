@@ -190,6 +190,49 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             self.assertEqual(1, len(errors))
             self.assertIn("example.md:1", errors[0])
 
+    def test_repeatable_collection_guidance_is_generic_and_complete(self) -> None:
+        guide = (ROOT / "docs" / "repeatable-collection.md").read_text(encoding="utf-8")
+        for required in (
+            "先调查现成能力",
+            "许可证",
+            "provider_order",
+            "稳定 ID",
+            "连续两轮",
+            "详情核验",
+            "policy-blocked",
+            "没有明确许可证的项目只能学习公开思路",
+        ):
+            self.assertIn(required, guide)
+        for platform_name in (
+            "淘宝",
+            "京东",
+            "拼多多",
+            "闲鱼",
+            "小红书",
+            "ebay",
+            "amazon",
+            "walmart",
+        ):
+            self.assertNotIn(platform_name, guide.lower())
+
+    def test_generated_instructions_require_backend_audit_before_new_collection_code(self) -> None:
+        repository_guide = (ROOT / "template" / "README.md.tmpl").read_text(encoding="utf-8")
+        agent_guide = (
+            ROOT
+            / "template"
+            / ".agents"
+            / "skills"
+            / "__SKILL_NAME__"
+            / "SKILL.md.tmpl"
+        ).read_text(encoding="utf-8")
+        self.assertIn("第零步：调查现成能力", repository_guide)
+        self.assertIn(
+            "编写新采集器以前先调查",
+            (ROOT / "template" / "AGENTS.md.tmpl").read_text(encoding="utf-8"),
+        )
+        self.assertIn("多个后端必须返回相同的节点输出 Schema", agent_guide)
+        self.assertIn("不能通过更换后端绕过", agent_guide)
+
     def test_sensitive_scanner_does_not_trust_example_variable_names(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = self.create_repository(Path(temporary))

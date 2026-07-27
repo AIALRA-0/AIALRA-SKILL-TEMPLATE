@@ -19,6 +19,7 @@ REQUIRED = (
     "SECURITY.md",
     "docs/architecture.md",
     "docs/workflow-reference.md",
+    "docs/repeatable-collection.md",
     "docs/file-map.md",
     "docs/learning.md",
     "docs/maintenance.md",
