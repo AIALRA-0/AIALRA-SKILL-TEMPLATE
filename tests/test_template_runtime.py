@@ -369,6 +369,25 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             self.assertEqual(2, result.returncode)
             self.assertIn("no eligible files", result.stderr)
 
+    def test_generated_tests_survive_repository_directory_rename(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            repo = self.create_repository(parent)
+            renamed = parent / "AIALRA-NORMALIZE-TEXT-SKILL"
+            repo.rename(renamed)
+            result = subprocess.run(
+                [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
+                cwd=renamed,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(
+                0,
+                result.returncode,
+                msg=f"stdout={result.stdout}\nstderr={result.stderr}",
+            )
+
     def test_runner_executes_deterministic_graph(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = self.create_repository(Path(temporary))

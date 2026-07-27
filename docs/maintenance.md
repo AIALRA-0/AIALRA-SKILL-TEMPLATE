@@ -135,6 +135,8 @@ python3 -m unittest discover -s tests -v
 
 测试应当覆盖成功路径、预期失败、确认关卡、停止条件和本次修复对应的回归案例
 
+自定义测试必须从 `.agents/skills/` 发现唯一 Skill；不得用仓库文件夹名称推断 Skill 名称，因为 GitHub 仓库名、克隆目录和本地目录可以不同
+
 ### 第三步：扫描敏感信息
 
 ```bash
