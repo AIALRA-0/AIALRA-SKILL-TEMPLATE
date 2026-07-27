@@ -72,7 +72,6 @@ Runtime 或生成器行为变化时，需要在这里增加成功测试和邻近
 | 路径 | 它做什么 |
 |---|---|
 | `.github/workflows/validate.yml` | 在推送和 PR 时运行模板验证、测试、敏感信息扫描和完整历史 Gitleaks |
-| `.github/dependabot.yml` | 定期检查 GitHub Actions 依赖更新 |
 
 这些 YAML 文件遵循 GitHub 固定格式；它们的顶层字段不能套入自定义分类
 
@@ -149,7 +148,6 @@ Runtime 学习只能修改 `learning/`
 |---|---|---|
 | `template/tests/test_runtime.py` | `tests/test_runtime.py` | 检查草稿图、核心锁、Schema 和学习脱敏 |
 | `template/.github/workflows/validate.yml` | `.github/workflows/validate.yml` | 在推送和 PR 时验证当前 Skill |
-| `template/.github/dependabot.yml` | `.github/dependabot.yml` | 检查 Actions 依赖更新 |
 
 领域 Skill 配置完成前，需要继续增加领域成功、失败和相邻非触发测试
 
