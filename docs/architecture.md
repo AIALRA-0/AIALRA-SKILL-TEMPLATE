@@ -177,6 +177,14 @@ Runner 在每次节点真正执行前再次检查当前输入是否符合该节�
 
 首选后端不可用时，可以进入工作流已经声明的下一条受支持路径
 
+外部节点把后端顺序写入 `source_routing.provider_order`
+
+每个后端都进入 `source_routing.providers` 大分类，并声明类型、准确标识、可用条件、动作边界和证据契约
+
+选择规则进入 `source_routing.selection_policy` 大分类
+
+Runtime 会拒绝散落在 `source_routing` 下的未分类后端条目
+
 登录、验证码、授权不足和宿主策略阻止必须报告真实状态，不能通过更换工具绕过
 
 完整设计方法见 [可重复采集与成熟后端复用](repeatable-collection.md)

@@ -239,6 +239,81 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             (ROOT / "template" / "AGENTS.md.tmpl").read_text(encoding="utf-8"),
         )
 
+    def test_source_routing_requires_classified_provider_contracts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = self.create_repository(Path(temporary))
+            skill = self.configure_deterministic_workflow(repo)
+            workflow_path = skill / "workflow.yaml"
+            workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+            node = workflow["execution"]["graph"]["nodes"][0]
+            node["executor"] = "mcp"
+            node.pop("command")
+            node["action"] = {
+                "name": "records.lookup",
+                "arguments": {
+                    "source_routing": {
+                        "provider_order": ["preferred-mcp"],
+                        "providers": {
+                            "preferred-mcp": {
+                                "kind": "mcp",
+                                "identifier": "records-mcp",
+                                "availability": "installed-and-loaded",
+                                "allowed_operations": ["records.lookup"],
+                                "prohibited_operation_classes": [
+                                    "account-write",
+                                    "credential-read",
+                                ],
+                                "evidence_contract": {
+                                    "node_output_schema": "current-node-output",
+                                    "observation_schema": "records-observation-v1",
+                                },
+                            }
+                        },
+                        "selection_policy": {
+                            "select_before_first_access": True,
+                            "reuse_selected_after_success": True,
+                            "switch_only_when_unavailable_before_access": True,
+                            "hard_stop_kinds": [
+                                "user-required",
+                                "policy-blocked",
+                                "fatal",
+                            ],
+                        },
+                    }
+                },
+            }
+            workflow_path.write_text(
+                json.dumps(workflow, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            valid = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "validate_repo.py"),
+                    "--ignore-core-lock",
+                ],
+                repo,
+            )
+            self.assertTrue(valid["valid"])
+
+            workflow["execution"]["graph"]["nodes"][0]["action"]["arguments"][
+                "source_routing"
+            ]["preferred-mcp"] = {"mode": "uncategorized"}
+            workflow_path.write_text(
+                json.dumps(workflow, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            invalid = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "validate_repo.py"),
+                    "--ignore-core-lock",
+                ],
+                repo,
+                expected_code=1,
+            )
+            self.assertIn("unclassified", " ".join(invalid["errors"]))
+
     def test_sensitive_scanner_does_not_trust_example_variable_names(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = self.create_repository(Path(temporary))

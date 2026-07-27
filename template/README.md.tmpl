@@ -68,6 +68,12 @@
 
 新建 `.agents/skills/__SKILL_NAME__/references/provider-routing.md`，并在其中记录审计结论、后端顺序、动作白名单和回退路径
 
+在外部节点的 `action.arguments.source_routing.providers` 中声明每个插件、MCP、CLI、接口或 Skill 的准确标识
+
+每个后端同时声明可用条件、允许动作、禁止动作和证据契约
+
+后端选择规则统一写入 `source_routing.selection_policy`
+
 ### 第一步：定义触发范围
 
 打开 `.agents/skills/__SKILL_NAME__/SKILL.md`
@@ -132,6 +138,9 @@ validator 是结果检查器
 - 命中停止条件时安全暂停
 - 相邻但不支持的请求不会触发
 - 首选外部后端不可用时只进入声明的受支持回退路径
+- `provider_order` 与 `providers` 条目完全一致
+- 每个伴随插件或 MCP 都声明准确标识和证据契约
+- 未分类的后端条目会被 Runtime 拒绝
 - 登录、验证码、授权不足和宿主策略阻止不会通过更换工具绕过
 - 宿主策略阻止会立即结束当前运行，不会进入回退、重试或更换执行面
 - 多轮任务能够按稳定 ID 去重并拒绝虚假饱和

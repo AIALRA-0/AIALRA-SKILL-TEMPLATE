@@ -132,6 +132,12 @@ python3 scripts/learn.py record \
 
 多个后端必须返回相同的节点输出 Schema
 
+插件、MCP、CLI、接口和其他 Skill 的准确标识必须写入 `source_routing.providers`
+
+后端可用条件、允许动作、禁止动作和证据契约必须由 Runtime 校验
+
+后端选择、成功后复用和硬停止规则必须写入 `source_routing.selection_policy`
+
 登录、验证码、授权不足和宿主策略阻止不能通过更换后端绕过
 
 ## 失败处理

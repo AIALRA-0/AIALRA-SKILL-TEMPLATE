@@ -66,6 +66,8 @@ python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 - 没有明确许可证时只学习公开思路，不复制代码
 - 权限超过任务需要的组件不能自动安装
 - 外部节点只调用工作流声明的最小动作白名单
+- 外部节点使用插件、MCP、CLI、接口或其他 Skill 时，在 `source_routing.providers` 中声明准确标识、可用条件和证据契约
+- 后端条目统一放入 `providers` 大分类，选择规则统一放入 `selection_policy` 大分类
 - 首选后端不可用时只使用已经声明并经过测试的回退路径
 - 登录、验证码、授权不足和宿主策略阻止不能通过切换后端绕过
 - `policy-blocked` 是硬停止，不能进入 `fallback`、重试或更换执行面

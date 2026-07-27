@@ -165,22 +165,52 @@ flowchart TD
     "arguments": {
       "source_routing": {
         "provider_order": [
-          "trusted-structured-provider",
-          "supported-browser"
+          "preferred-mcp",
+          "trusted-cli"
         ],
-        "trusted-structured-provider": {
-          "mode": "use-only-when-installed-connected-and-trusted",
-          "allowed_operations": [
-            "domain.search"
-          ],
-          "prohibited_operation_classes": [
-            "account-write",
-            "credential-read"
-          ]
+        "providers": {
+          "preferred-mcp": {
+            "kind": "mcp",
+            "identifier": "example-mcp-server",
+            "availability": "installed-and-loaded",
+            "allowed_operations": [
+              "domain.search"
+            ],
+            "prohibited_operation_classes": [
+              "account-write",
+              "credential-read"
+            ],
+            "evidence_contract": {
+              "node_output_schema": "current-node-output",
+              "observation_schema": "provider-observation-v1"
+            }
+          },
+          "trusted-cli": {
+            "kind": "cli",
+            "identifier": "example-cli",
+            "availability": "installed-connected-and-trusted",
+            "allowed_operations": [
+              "domain.search"
+            ],
+            "prohibited_operation_classes": [
+              "account-write",
+              "credential-read"
+            ],
+            "evidence_contract": {
+              "node_output_schema": "current-node-output",
+              "observation_schema": null
+            }
+          }
         },
-        "supported-browser": {
-          "mode": "fallback",
-          "reuse_current_login_session": true
+        "selection_policy": {
+          "select_before_first_access": true,
+          "reuse_selected_after_success": true,
+          "switch_only_when_unavailable_before_access": true,
+          "hard_stop_kinds": [
+            "user-required",
+            "policy-blocked",
+            "fatal"
+          ]
         }
       },
       "collection_policy": {
@@ -202,7 +232,11 @@ flowchart TD
 
 `provider_order` 表示选择顺序
 
-第一个后端只有在已经安装、连接并获得用户信任时才能使用
+`providers` 保存每个后端的类型、准确标识、可用条件、动作边界和证据契约
+
+`selection_policy` 保存所有后端共同遵守的选择和停止规则
+
+Runtime 会拒绝直接散落在 `source_routing` 下的后端条目
 
 后端不可用时可以进入下一项
 

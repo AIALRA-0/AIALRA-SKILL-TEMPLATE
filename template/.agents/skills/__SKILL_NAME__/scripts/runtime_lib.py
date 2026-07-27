@@ -17,6 +17,15 @@ NODE_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 EXECUTORS = {"script", "mcp", "browser-dom", "computer-use", "reasoning"}
 SIDE_EFFECTS = {"none", "read", "write", "destructive"}
 EXCLUDED_CORE_PARTS = {"__pycache__", ".DS_Store"}
+PROVIDER_KINDS = {"connector", "mcp", "cli", "browser", "api", "skill"}
+PROVIDER_AVAILABILITY = {
+    "bundled",
+    "installed-and-loaded",
+    "installed-connected-and-trusted",
+    "already-authorized",
+    "repository-managed",
+}
+FAILURE_KINDS = {"retryable", "fallback", "user-required", "policy-blocked", "fatal"}
 
 
 class RuntimeErrorDetail(ValueError):
@@ -169,6 +178,170 @@ def load_workflow(skill_dir: Path) -> dict[str, Any]:
     if not isinstance(workflow, dict):
         raise RuntimeErrorDetail("workflow.yaml must contain an object")
     return workflow
+
+
+def validate_source_routing(value: Any, label: str) -> list[str]:
+    """Validate the optional categorized provider contract inside one external action."""
+    errors: list[str] = []
+    if not isinstance(value, dict):
+        return [f"{label} must be an object"]
+    required_categories = {"provider_order", "providers", "selection_policy"}
+    missing = sorted(required_categories - set(value))
+    if missing:
+        errors.append(f"{label} missing categories: {', '.join(missing)}")
+    extra = sorted(set(value) - required_categories)
+    if extra:
+        errors.append(f"{label} contains unclassified fields: {', '.join(extra)}")
+
+    provider_order = value.get("provider_order")
+    if (
+        not isinstance(provider_order, list)
+        or not 1 <= len(provider_order) <= 8
+        or not all(isinstance(item, str) and NODE_ID_RE.fullmatch(item) for item in provider_order)
+    ):
+        errors.append(f"{label}.provider_order must contain 1-8 unique kebab-case provider ids")
+        provider_order = []
+    elif len(provider_order) != len(set(provider_order)):
+        errors.append(f"{label}.provider_order contains duplicate providers")
+
+    providers = value.get("providers")
+    if not isinstance(providers, dict):
+        errors.append(f"{label}.providers must be an object")
+        providers = {}
+    elif set(providers) != set(provider_order):
+        errors.append(f"{label}.providers keys must exactly match provider_order")
+    required_provider_fields = {
+        "kind",
+        "identifier",
+        "availability",
+        "allowed_operations",
+        "prohibited_operation_classes",
+        "evidence_contract",
+    }
+    for provider_id, provider in providers.items():
+        provider_label = f"{label}.providers.{provider_id}"
+        if not isinstance(provider, dict):
+            errors.append(f"{provider_label} must be an object")
+            continue
+        missing_provider = sorted(required_provider_fields - set(provider))
+        if missing_provider:
+            errors.append(
+                f"{provider_label} missing fields: {', '.join(missing_provider)}"
+            )
+        extra_provider = sorted(set(provider) - required_provider_fields)
+        if extra_provider:
+            errors.append(
+                f"{provider_label} contains unknown fields: {', '.join(extra_provider)}"
+            )
+        if provider.get("kind") not in PROVIDER_KINDS:
+            errors.append(f"{provider_label}.kind is invalid")
+        identifier = provider.get("identifier")
+        if (
+            not isinstance(identifier, str)
+            or not identifier.strip()
+            or len(identifier) > 200
+            or "\n" in identifier
+        ):
+            errors.append(f"{provider_label}.identifier must be a non-empty one-line string")
+        if provider.get("availability") not in PROVIDER_AVAILABILITY:
+            errors.append(f"{provider_label}.availability is invalid")
+        for field in ("allowed_operations", "prohibited_operation_classes"):
+            items = provider.get(field)
+            if (
+                not isinstance(items, list)
+                or not items
+                or len(items) > 32
+                or not all(
+                    isinstance(item, str)
+                    and item.strip()
+                    and len(item) <= 120
+                    and "\n" not in item
+                    for item in items
+                )
+            ):
+                errors.append(
+                    f"{provider_label}.{field} must be an array of 1-32 non-empty strings"
+                )
+            elif len(items) != len(set(items)):
+                errors.append(f"{provider_label}.{field} contains duplicates")
+        evidence_contract = provider.get("evidence_contract")
+        if not isinstance(evidence_contract, dict):
+            errors.append(f"{provider_label}.evidence_contract must be an object")
+        else:
+            required_evidence = {"node_output_schema", "observation_schema"}
+            missing_evidence = sorted(required_evidence - set(evidence_contract))
+            if missing_evidence:
+                errors.append(
+                    f"{provider_label}.evidence_contract missing fields: "
+                    + ", ".join(missing_evidence)
+                )
+            extra_evidence = sorted(set(evidence_contract) - required_evidence)
+            if extra_evidence:
+                errors.append(
+                    f"{provider_label}.evidence_contract contains unknown fields: "
+                    + ", ".join(extra_evidence)
+                )
+            if evidence_contract.get("node_output_schema") != "current-node-output":
+                errors.append(
+                    f"{provider_label}.evidence_contract.node_output_schema "
+                    "must be current-node-output"
+                )
+            observation_schema = evidence_contract.get("observation_schema")
+            if observation_schema is not None and (
+                not isinstance(observation_schema, str)
+                or not observation_schema.strip()
+                or len(observation_schema) > 300
+                or "\n" in observation_schema
+            ):
+                errors.append(
+                    f"{provider_label}.evidence_contract.observation_schema "
+                    "must be null or a non-empty one-line identifier"
+                )
+
+    selection = value.get("selection_policy")
+    if not isinstance(selection, dict):
+        errors.append(f"{label}.selection_policy must be an object")
+    else:
+        required_selection = {
+            "select_before_first_access",
+            "reuse_selected_after_success",
+            "switch_only_when_unavailable_before_access",
+            "hard_stop_kinds",
+        }
+        missing_selection = sorted(required_selection - set(selection))
+        if missing_selection:
+            errors.append(
+                f"{label}.selection_policy missing fields: "
+                + ", ".join(missing_selection)
+            )
+        extra_selection = sorted(set(selection) - required_selection)
+        if extra_selection:
+            errors.append(
+                f"{label}.selection_policy contains unknown fields: "
+                + ", ".join(extra_selection)
+            )
+        for field in (
+            "select_before_first_access",
+            "reuse_selected_after_success",
+            "switch_only_when_unavailable_before_access",
+        ):
+            if selection.get(field) is not True:
+                errors.append(f"{label}.selection_policy.{field} must be true")
+        hard_stops = selection.get("hard_stop_kinds")
+        if (
+            not isinstance(hard_stops, list)
+            or not hard_stops
+            or len(hard_stops) != len(set(hard_stops))
+            or any(kind not in FAILURE_KINDS for kind in hard_stops)
+        ):
+            errors.append(
+                f"{label}.selection_policy.hard_stop_kinds must contain unique failure kinds"
+            )
+        elif "policy-blocked" not in hard_stops:
+            errors.append(
+                f"{label}.selection_policy.hard_stop_kinds must include policy-blocked"
+            )
+    return errors
 
 
 def validate_workflow(
@@ -373,8 +546,16 @@ def validate_workflow(
                     or "\n" in action_name
                 ):
                     errors.append(f"{label}.action.name must be a non-empty one-line string")
-                if not isinstance(action.get("arguments"), dict):
+                arguments = action.get("arguments")
+                if not isinstance(arguments, dict):
                     errors.append(f"{label}.action.arguments must be an object")
+                elif "source_routing" in arguments:
+                    errors.extend(
+                        validate_source_routing(
+                            arguments["source_routing"],
+                            f"{label}.action.arguments.source_routing",
+                        )
+                    )
         side_effect = node.get("side_effect")
         if side_effect not in SIDE_EFFECTS:
             errors.append(f"{label}.side_effect is invalid")

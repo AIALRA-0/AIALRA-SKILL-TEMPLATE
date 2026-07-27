@@ -277,52 +277,86 @@ Runner 把该对象原样放入外部指令；Agent 或宿主只能执行该动�
 
 ```jsonc
 {
-  "source_routing": {
+  "source_routing": { // 多后端统一契约
     "provider_order": [ // 按顺序尝试已经受支持的后端
-      "trusted-structured-provider",
-      "supported-browser"
+      "preferred-mcp",
+      "trusted-cli"
     ],
-    "trusted-structured-provider": { // 只有用户已经信任并连接时才可使用
-      "mode": "use-only-when-installed-connected-and-trusted",
-      "allowed_operations": [ // 当前节点允许调用的最小动作白名单
-        "domain.search"
-      ],
-      "prohibited_operation_classes": [ // 当前节点永远不能调用的动作类别
-        "account-write",
-        "credential-read"
+    "providers": { // 每个后端都必须进入这个大分类
+      "preferred-mcp": { // provider_order 中的稳定后端编号
+        "kind": "mcp", // connector mcp cli browser api 或 skill
+        "identifier": "example-mcp-server", // Agent 实际需要找到的准确名称
+        "availability": "installed-and-loaded", // 选择前必须满足的可用条件
+        "allowed_operations": [ // 当前节点允许调用的最小动作白名单
+          "domain.search"
+        ],
+        "prohibited_operation_classes": [ // 当前节点永远不能调用的动作类别
+          "account-write",
+          "credential-read"
+        ],
+        "evidence_contract": { // 后端证据怎样交给当前节点
+          "node_output_schema": "current-node-output", // 最终必须符合当前节点 output_schema
+          "observation_schema": "provider-observation-v1" // 后端自带观察协议，没有时使用 null
+        }
+      },
+      "trusted-cli": { // 第二个已经审计的后端
+        "kind": "cli",
+        "identifier": "example-cli",
+        "availability": "installed-connected-and-trusted",
+        "allowed_operations": [
+          "domain.search"
+        ],
+        "prohibited_operation_classes": [
+          "account-write",
+          "credential-read"
+        ],
+        "evidence_contract": {
+          "node_output_schema": "current-node-output",
+          "observation_schema": null
+        }
+      }
+    },
+    "selection_policy": { // 所有后端共同遵守的选择规则
+      "select_before_first_access": true, // 第一次访问数据源以前确定后端
+      "reuse_selected_after_success": true, // 预检成功后保持同一后端
+      "switch_only_when_unavailable_before_access": true, // 只有访问前确认不可用才能选择下一项
+      "hard_stop_kinds": [ // 命中这些失败类型时不能换后端
+        "user-required",
+        "policy-blocked",
+        "fatal"
       ]
-    },
-    "supported-browser": { // 首选后端不可用时的受支持路径
-      "mode": "fallback",
-      "reuse_current_login_session": true
-    },
-    "access_preflight": { // 正式采集前必须验证的真实能力
-      "require_search_transition": true,
-      "accepted_visible_states": [
-        "results-visible",
-        "no-results-visible"
-      ],
-      "reuse_selected_backend_after_success": true
     }
   }
 }
 ```
 
-后端不可用可以进入下一项
+`provider_order` 必须包含一到八个不重复的 kebab-case 后端编号
 
-登录、验证码、授权不足和 `policy-blocked` 不能通过切换后端绕过
+`providers` 的键必须与 `provider_order` 完全一致
+
+`kind` 只允许 `connector`、`mcp`、`cli`、`browser`、`api` 或 `skill`
+
+`identifier` 保存 Agent 实际需要找到的连接器、MCP 服务、命令、浏览器、接口或 Skill 准确名称
+
+`availability` 只允许 `bundled`、`installed-and-loaded`、`installed-connected-and-trusted`、`already-authorized` 或 `repository-managed`
+
+`allowed_operations` 保存当前节点允许的动作
+
+`prohibited_operation_classes` 保存当前节点禁止的动作类别
+
+`evidence_contract.node_output_schema` 固定为 `current-node-output`
+
+`evidence_contract.observation_schema` 保存后端自带的观察协议标识，没有独立观察协议时使用 `null`
+
+`selection_policy` 的三个布尔值都必须为 `true`
+
+`hard_stop_kinds` 使用 Runner 支持的失败类型，并且必须包含 `policy-blocked`
 
 每个后端都必须返回同一个节点声明的 `output_schema`
 
 第三方后端的许可证、权限、维护、测试、输出和依赖安全需要在具体 Skill 的 `references/` 中留下审计记录
 
-`access_preflight` 是具体 Skill 的领域契约，不是 Workflow IR 强制字段
-
-`require_search_transition=true` 表示打开首页不能算后端可用
-
-`accepted_visible_states` 区分有结果和明确无结果
-
-`reuse_selected_backend_after_success=true` 表示预检通过后当前运行固定使用该后端
+真实搜索预检的具体查询、可见状态和数量预算继续放在 `action.arguments` 的领域分类中
 
 登录、人机检查、授权不足和 `policy-blocked` 不能触发运行中静默换源
 
