@@ -295,6 +295,14 @@ Runner 把该对象原样放入外部指令；Agent 或宿主只能执行该动�
     "supported-browser": { // 首选后端不可用时的受支持路径
       "mode": "fallback",
       "reuse_current_login_session": true
+    },
+    "access_preflight": { // 正式采集前必须验证的真实能力
+      "require_search_transition": true,
+      "accepted_visible_states": [
+        "results-visible",
+        "no-results-visible"
+      ],
+      "reuse_selected_backend_after_success": true
     }
   }
 }
@@ -307,6 +315,20 @@ Runner 把该对象原样放入外部指令；Agent 或宿主只能执行该动�
 每个后端都必须返回同一个节点声明的 `output_schema`
 
 第三方后端的许可证、权限、维护、测试、输出和依赖安全需要在具体 Skill 的 `references/` 中留下审计记录
+
+`access_preflight` 是具体 Skill 的领域契约，不是 Workflow IR 强制字段
+
+`require_search_transition=true` 表示打开首页不能算后端可用
+
+`accepted_visible_states` 区分有结果和明确无结果
+
+`reuse_selected_backend_after_success=true` 表示预检通过后当前运行固定使用该后端
+
+登录、人机检查、授权不足和 `policy-blocked` 不能触发运行中静默换源
+
+临时限流使用 `retryable`
+
+只能打开首页、企业官网、空白页或无法完成搜索跳转时使用 `fallback`
 
 ### `side_effect`
 

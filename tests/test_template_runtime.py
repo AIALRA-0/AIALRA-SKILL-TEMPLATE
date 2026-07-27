@@ -232,6 +232,12 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
         )
         self.assertIn("多个后端必须返回相同的节点输出 Schema", agent_guide)
         self.assertIn("不能通过更换后端绕过", agent_guide)
+        self.assertIn("打开首页不能证明搜索可用", repository_guide)
+        self.assertIn("第一轮成功后出现挑战", repository_guide)
+        self.assertIn(
+            "打开首页不能证明搜索可用",
+            (ROOT / "template" / "AGENTS.md.tmpl").read_text(encoding="utf-8"),
+        )
 
     def test_sensitive_scanner_does_not_trust_example_variable_names(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
