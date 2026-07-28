@@ -208,6 +208,8 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             "identity_phrases",
             "required_terms",
             "礼品卡金额",
+            "操作按钮、导航链接",
+            "界面按钮文字被误识别为实体名称",
             "browser_network_requests",
             "allowed_path_prefix",
             "CSS、JavaScript",
