@@ -201,6 +201,7 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             "详情核验",
             "policy-blocked",
             "没有明确许可证的项目只能学习公开思路",
+            "两个任务同时冷启动",
         ):
             self.assertIn(required, guide)
         for platform_name in (
@@ -234,8 +235,13 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
         self.assertIn("不能通过更换后端绕过", agent_guide)
         self.assertIn("打开首页不能证明搜索可用", repository_guide)
         self.assertIn("第一轮成功后出现挑战", repository_guide)
+        self.assertIn("两个独立客户端同时冷启动", repository_guide)
         self.assertIn(
             "打开首页不能证明搜索可用",
+            (ROOT / "template" / "AGENTS.md.tmpl").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "两个独立客户端同时冷启动",
             (ROOT / "template" / "AGENTS.md.tmpl").read_text(encoding="utf-8"),
         )
 
