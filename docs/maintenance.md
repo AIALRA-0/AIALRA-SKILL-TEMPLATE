@@ -127,15 +127,15 @@ python3 scripts/validate.py --ignore-core-lock
 
 `--ignore-core-lock` 只在维护核心时使用，因为旧核心锁还没有包含新内容
 
-### 第二步：运行测试
+### 第二步：运行本次修改的目标测试
 
-```bash
-python3 -m unittest discover -s tests -v
-```
+先运行与本次修改直接相关且不启动 Runner 的测试
 
-测试应当覆盖成功路径、预期失败、确认关卡、停止条件和本次修复对应的回归案例
+目标测试用于尽早发现领域算法、validator、Schema 边界和回归案例错误
 
-自定义测试必须从 `.agents/skills/` 发现唯一 Skill；不得用仓库文件夹名称推断 Skill 名称，因为 GitHub 仓库名、克隆目录和本地目录可以不同
+此时旧核心锁还没有包含修改内容，启动 Runner 的测试会按设计拒绝运行
+
+目标测试的完整命令由具体仓库决定，例如运行某个测试类或某个测试方法
 
 ### 第三步：扫描敏感信息
 
@@ -167,12 +167,19 @@ python3 .agents/skills/<skill-name>/scripts/freeze_core.py
 
 它用于发现未经说明的漂移，不用于证明修改者身份
 
-### 第六步：运行最终验证
+### 第六步：运行全部测试和最终验证
 
 ```bash
+python3 -m unittest discover -s tests -v
 python3 scripts/validate.py
 python3 .agents/skills/<skill-name>/scripts/freeze_core.py --check
 ```
+
+全部测试放在生成核心锁以后执行，因此 Runner 端到端测试可以正常启动
+
+测试应当覆盖成功路径、预期失败、确认关卡、停止条件和本次修复对应的回归案例
+
+自定义测试必须从 `.agents/skills/` 发现唯一 Skill；不得用仓库文件夹名称推断 Skill 名称，因为 GitHub 仓库名、克隆目录和本地目录可以不同
 
 最终验证必须在不忽略核心锁的情况下通过
 

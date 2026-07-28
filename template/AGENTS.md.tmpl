@@ -38,12 +38,14 @@
 
 ```bash
 python3 scripts/validate.py --ignore-core-lock
-python3 -m unittest discover -s tests -v
 python3 scripts/check_secrets.py
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py
+python3 -m unittest discover -s tests -v
 python3 scripts/validate.py
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 ```
+
+冻结核心锁以前，先运行与本次修改直接相关且不启动 Runner 的目标测试
 
 同时更新 `VERSION` 和 `CHANGELOG.md`
 

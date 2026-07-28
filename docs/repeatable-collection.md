@@ -394,6 +394,82 @@ flowchart LR
 
 最低值、最高值、可行性和事实性结论不能只依赖未核验摘要
 
+## 商品身份怎样避免误判
+
+商品类研究可以在领域计划 Schema 中使用以下四组字段
+
+```jsonc
+{
+  "product": {
+    "canonical_query": "Model Alpha 16", // 给人阅读的目标名称
+    "identity_phrases": [ // 标题至少连续命中一个型号写法
+      "Model Alpha 16",
+      "ModelAlpha 16"
+    ],
+    "required_terms": [ // 标题必须逐项包含的身份词
+      "Alpha",
+      "16"
+    ],
+    "excluded_terms": [ // 命中后直接排除的非目标内容
+      "case only",
+      "repair service"
+    ]
+  }
+}
+```
+
+`canonical_query` 用于展示目标名称，不单独承担机器过滤
+
+`identity_phrases` 是一至五个短而连续的型号写法，标题至少命中其中一个
+
+`required_terms` 是原子身份检查，标题必须包含全部条目
+
+`excluded_terms` 保存配件、服务、空包装、坏件和其他明确排除条件
+
+候选进入详情前必须同时满足一个连续型号写法和全部原子身份词
+
+这条组合规则可以阻止品牌、型号和规格词散落在无关标题中时被误认成完整目标商品
+
+领域测试至少覆盖同品牌错误型号、身份词散落、带目标词的配件和完整目标商品四类案例
+
+## 价格证据怎样绑定到当前候选
+
+详情价必须来自已经确认标题和规格的同一主要商品区域
+
+礼品卡金额、优惠券可省金额、划线价、历史价、相关商品价、订阅优惠和会员优惠不能自动充当当前商品公开价
+
+条件价格需要单独保存条件类型、资格是否核验和优惠是否核验
+
+详情价明显低于搜索卡片价时，validator 应要求已经核验的折扣证据
+
+税费、运费和进口费用未知时，最终状态使用部分完成，并明确当前只能比较已知金额
+
+## 图片证据怎样避免收进页面资源
+
+详情快照没有直接图片地址时，工作流可以声明经过测试的只读网络请求操作
+
+该操作必须出现在当前节点的动作白名单和 `source_routing.providers` 中
+
+图片规则建议放入节点的 `action.arguments.image_evidence`
+
+```jsonc
+{
+  "image_evidence": {
+    "operation": "browser_network_requests", // 工作流允许调用的只读动作
+    "allowed_host": "media.example.invalid", // 只接受经过测试的图片主机
+    "allowed_path_prefix": "/product/", // 只接受商品媒体路径
+    "allowed_file_extensions": [".jpg", ".png", ".webp"], // 只接受图片扩展名
+    "maximum_urls_per_offer": 6 // 单个候选最多保存六张图
+  }
+}
+```
+
+validator 需要同时检查协议、主机、路径、扩展名、数量和当前候选关联
+
+CSS、JavaScript、字体、导航图标、保修图、装饰图和其他页面资源不能提升商品证据等级
+
+临时采集脚本中使用过的外部动作必须回写正式工作流、动作白名单、validator 和回归测试
+
 ## 合规节奏怎样写
 
 节奏限制用于控制请求压力和误操作

@@ -165,15 +165,22 @@ validator 是结果检查器
 
 ```bash
 python3 scripts/validate.py --allow-draft --ignore-core-lock
-python3 -m unittest discover -s tests -v
 python3 scripts/check_secrets.py
+python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py
+python3 -m unittest discover -s tests -v
+python3 scripts/validate.py --allow-draft
+python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 ```
 
 第一条命令允许 `configured=false`，并暂时忽略尚未更新的核心锁
 
-第二条命令运行仓库测试
+第二条命令检查疑似凭据和敏感文件
 
-第三条命令检查疑似凭据和敏感文件
+第三条命令把已经通过结构和敏感信息检查的稳定文件写入核心锁
+
+第四条命令运行全部仓库测试，包括需要核心锁一致的 Runner 测试
+
+最后两条命令在草稿模式下复查仓库与核心锁
 
 任意命令失败时先修复问题，不要进入下一步
 
@@ -187,6 +194,7 @@ python3 scripts/check_secrets.py
 
 ```bash
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py
+python3 -m unittest discover -s tests -v
 python3 scripts/validate.py
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 ```
@@ -300,12 +308,14 @@ python3 .agents/skills/__SKILL_NAME__/scripts/learn.py record \
 
 ```bash
 python3 scripts/validate.py --ignore-core-lock
-python3 -m unittest discover -s tests -v
 python3 scripts/check_secrets.py
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py
+python3 -m unittest discover -s tests -v
 python3 scripts/validate.py
 python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py --check
 ```
+
+冻结核心锁以前，先运行与本次修改直接相关且不启动 Runner 的目标测试
 
 同时更新 `VERSION` 和 `CHANGELOG.md`
 

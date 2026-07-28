@@ -190,6 +190,31 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             self.assertEqual(1, len(errors))
             self.assertIn("example.md:1", errors[0])
 
+    def test_maintenance_order_freezes_before_full_runner_tests(self) -> None:
+        agents = (ROOT / "template" / "AGENTS.md.tmpl").read_text(encoding="utf-8")
+        readme = (ROOT / "template" / "README.md.tmpl").read_text(encoding="utf-8")
+        freeze = "python3 .agents/skills/__SKILL_NAME__/scripts/freeze_core.py"
+        full_tests = "python3 -m unittest discover -s tests -v"
+        for document in (agents, readme):
+            maintenance = document[document.index("python3 scripts/validate.py --ignore-core-lock") :]
+            self.assertLess(maintenance.index(freeze), maintenance.index(full_tests))
+            self.assertIn("不启动 Runner 的目标测试", maintenance)
+
+    def test_repeatable_collection_documents_strict_evidence_rules(self) -> None:
+        document = (ROOT / "docs" / "repeatable-collection.md").read_text(
+            encoding="utf-8"
+        )
+        for phrase in (
+            "identity_phrases",
+            "required_terms",
+            "礼品卡金额",
+            "browser_network_requests",
+            "allowed_path_prefix",
+            "CSS、JavaScript",
+            "动作白名单、validator 和回归测试",
+        ):
+            self.assertIn(phrase, document)
+
     def test_repeatable_collection_guidance_is_generic_and_complete(self) -> None:
         guide = (ROOT / "docs" / "repeatable-collection.md").read_text(encoding="utf-8")
         for required in (
