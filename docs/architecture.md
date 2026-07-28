@@ -223,7 +223,7 @@ Runner 只允许工作流中已经声明的状态转换
 |---|---|
 | `running` | 当前节点已经具备推进条件 |
 | `waiting-confirmation` | 当前节点正在等待用户确认 |
-| `waiting-external` | Runner 已返回外部动作，正在等待结果 |
+| `waiting-external` | Runner 已返回外部动作，正在等待结果；任务中断后可以原地续接 |
 | `waiting-user` | 当前流程正在等待用户亲自完成必要操作 |
 | `completed` | 最终结果已经通过全部检查 |
 | `failed` | 工作流已经失败并停止 |
@@ -251,6 +251,14 @@ Runner 进入节点预先声明的 `fallback`
 外部动作需要登录、验证码或必要输入时，Runner 进入 `waiting-user`
 
 用户完成操作后，宿主调用 `resume`
+
+Runner 的总时限只计算真正推进、校验和脚本执行时间
+
+等待确认、等待外部结果和等待用户期间不消耗总时限
+
+外部节点的一次连续执行窗口由节点自己的 `timeout_seconds` 限制
+
+任务中断后，宿主对 `waiting-external` 状态调用 `resume`，Runner 保留已有节点结果并重新开始当前节点的连续执行窗口
 
 ### 停止
 

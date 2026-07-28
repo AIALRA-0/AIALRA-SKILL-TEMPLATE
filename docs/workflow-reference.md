@@ -103,9 +103,13 @@
 
 ### `total_timeout_seconds`
 
-这个整数限制整次运行从 `started_at` 开始可以持续多少秒；允许范围为 1 到 86400
+这个整数限制 Runner 真正推进、校验和执行脚本节点累计可以使用多少秒；允许范围为 1 到 86400
 
-超过总时限时，Runner 停止继续推进
+`waiting-confirmation`、`waiting-external` 和 `waiting-user` 期间不消耗这项总时限
+
+外部节点仍由自己的 `timeout_seconds` 限制一次连续执行窗口
+
+任务被中断后使用 `resume` 重新打开当前外部节点的执行窗口，已经完成的节点和状态记录保持不变
 
 ## `execution.graph` 分类
 
@@ -470,7 +474,7 @@ Runner 命令只在对应状态下有效；错误状态中的命令会被拒绝
 |---|---|---|---|
 | `running` | 当前节点具备推进条件，节点尚未完成 | `advance` | 脚本节点开始执行；外部节点返回动作并进入等待 |
 | `waiting-confirmation` | 当前节点正在等待用户明确同意 | `approve` | 记录确认并恢复为 `running` |
-| `waiting-external` | Runner 已返回外部动作，正在等待结果 | `submit` 或 `fail` | 提交候选输出或报告失败 |
+| `waiting-external` | Runner 已返回外部动作，正在等待结果 | `submit`、`fail` 或 `resume` | 提交候选输出、报告失败或在任务中断后原地续接 |
 | `waiting-user` | 当前流程正在等待用户亲自完成必要操作 | `resume` | 恢复为 `running` |
 | `completed` | 最终输出已经通过全部检查 | 无 | 交付结果并记录学习事件 |
 | `failed` | 工作流已经失败并停止 | 无 | 保存错误和轨迹 |
@@ -546,13 +550,17 @@ python3 scripts/runner.py fail \
 
 ### `resume`
 
-用途：用户完成必要操作后恢复 `waiting-user` 状态
+用途：用户完成必要操作后恢复 `waiting-user`，或在任务中断后续接当前 `waiting-external` 节点
 
 ```bash
 python3 scripts/runner.py resume --state-id "真实状态编号"
 ```
 
-当前状态不是 `waiting-user` 时，Runner 拒绝恢复
+`waiting-user` 会恢复为 `running`
+
+`waiting-external` 会保留当前节点与全部既有结果，并重新开始该节点的一次连续执行窗口
+
+其他状态调用 `resume` 时，Runner 拒绝恢复
 
 ### `status`
 

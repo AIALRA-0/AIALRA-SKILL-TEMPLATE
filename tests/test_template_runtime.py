@@ -831,6 +831,95 @@ args.output.write_text(json.dumps(result, ensure_ascii=False) + '\\n', encoding=
             self.assertEqual("policy-blocked", blocked["error"]["kind"])
             self.assertEqual("external-read", blocked["error"]["node_id"])
 
+    def test_external_wait_can_resume_without_counting_idle_wall_time(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = self.create_repository(Path(temporary))
+            skill = self.configure_deterministic_workflow(repo)
+            workflow_path = skill / "workflow.yaml"
+            workflow = json.loads(workflow_path.read_text(encoding="utf-8"))
+            external = workflow["execution"]["graph"]["nodes"][0]
+            external["id"] = "external-read"
+            external["executor"] = "mcp"
+            external["action"] = {
+                "name": "example.read",
+                "arguments": {"from": "node-input"},
+            }
+            del external["command"]
+            external["side_effect"] = "read"
+            external["timeout_seconds"] = 2
+            workflow["execution"]["graph"]["entry_node"] = "external-read"
+            workflow["execution"]["limits"]["total_timeout_seconds"] = 5
+            workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
+            run_json([sys.executable, str(skill / "scripts" / "freeze_core.py")], repo)
+            input_file = repo / "input.json"
+            input_file.write_text('{"text":" alpha   beta "}\n', encoding="utf-8")
+            started = run_json(
+                [sys.executable, str(skill / "scripts" / "runner.py"), "start", "--input", str(input_file)],
+                repo,
+            )
+            state_id = started["state_id"]
+            waiting = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "runner.py"),
+                    "advance",
+                    "--state-id",
+                    state_id,
+                ],
+                repo,
+            )
+            self.assertEqual("waiting-external", waiting["status"])
+            state_path = repo / ".runtime" / "states" / f"{state_id}.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            old_timestamp = "2020-01-01T00:00:00+00:00"
+            state["started_at"] = old_timestamp
+            state["waiting_since"] = old_timestamp
+            del state["timing"]
+            state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+            resumed = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "runner.py"),
+                    "resume",
+                    "--state-id",
+                    state_id,
+                ],
+                repo,
+            )
+            self.assertEqual("waiting-external", resumed["status"])
+            resumed_state = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertNotEqual(old_timestamp, resumed_state["waiting_since"])
+            self.assertIsNone(resumed_state["timing"]["active_since"])
+            self.assertTrue(
+                any(
+                    event["event"] == "runtime-timing-initialized"
+                    for event in resumed_state["trace"]
+                )
+            )
+            self.assertTrue(
+                any(
+                    event["event"] == "external-node-resumed"
+                    for event in resumed_state["trace"]
+                )
+            )
+            output_file = repo / "output.json"
+            output_file.write_text('{"normalized":"alpha beta"}\n', encoding="utf-8")
+            completed = run_json(
+                [
+                    sys.executable,
+                    str(skill / "scripts" / "runner.py"),
+                    "submit",
+                    "--state-id",
+                    state_id,
+                    "--node-id",
+                    "external-read",
+                    "--output",
+                    str(output_file),
+                ],
+                repo,
+            )
+            self.assertEqual("completed", completed["status"])
+
     def test_runner_rechecks_each_node_input_schema(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repo = self.create_repository(Path(temporary))
