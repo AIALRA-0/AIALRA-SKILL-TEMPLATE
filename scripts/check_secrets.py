@@ -133,7 +133,10 @@ def main() -> int:
                 display = path.relative_to(root)
             except ValueError:
                 display = path
-            print(f"- {display}:{line_number}: {rule} (value redacted)", file=sys.stderr)
+            print(
+                f"- {display.as_posix()}:{line_number}: {rule} (value redacted)",
+                file=sys.stderr,
+            )
         return 1
     print(f"Sensitive-data scan passed for {len(paths)} file(s).")
     return 0

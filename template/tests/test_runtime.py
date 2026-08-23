@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,8 @@ SKILL_DIR = SKILLS[0]
 sys.path.insert(0, str(SKILL_DIR / "scripts"))
 
 from runtime_lib import (  # noqa: E402
+    atomic_write_json,
+    compute_core_manifest,
     load_workflow,
     sanitize_lesson,
     validate_schema,
@@ -28,6 +31,16 @@ class RuntimeContractTests(unittest.TestCase):
 
     def test_core_lock_matches(self) -> None:
         self.assertEqual([], verify_core_lock(ROOT, SKILL_DIR))
+
+    def test_core_manifest_uses_portable_paths(self) -> None:
+        manifest = compute_core_manifest(ROOT, SKILL_DIR)
+        self.assertTrue(all("\\" not in path for path in manifest["files"]))
+
+    def test_atomic_json_writer_uses_portable_newlines(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "state.json"
+            atomic_write_json(output, {"value": 1})
+            self.assertNotIn(b"\r\n", output.read_bytes())
 
     def test_schema_validator_rejects_unknown_properties(self) -> None:
         schema = {
