@@ -1,6 +1,74 @@
-# AIALRA-SKILL-TEMPLATE
+<div align="center">
 
-## 这份文件能帮你做什么
+<h1>AIALRA Skill Template</h1>
+
+<p><strong>用一次可验证的生成流程创建一个独立、受核心锁保护且默认不能执行真实任务的 Codex Skill 仓库</strong></p>
+
+<p>
+  <a href="CHANGELOG.md"><img src="docs/images/badges/version.svg" alt="AIALRA Skill Template 当前版本 0.11.2"></a>
+  <a href="#repository-layers"><img src="docs/images/badges/scope.svg" alt="每个生成仓库只保存一个 Skill"></a>
+  <a href="#safe-draft"><img src="docs/images/badges/state.svg" alt="生成仓库默认处于安全草稿状态"></a>
+  <a href="README.en.md"><img src="docs/images/badges/language.svg" alt="README 提供中文和英文版本"></a>
+</p>
+
+<p>
+  <a href="#project-overview">项目概览</a> ·
+  <a href="#repository-layers">仓库分层</a> ·
+  <a href="#create-repository">创建仓库</a> ·
+  <a href="#safe-draft">安全草稿</a> ·
+  <a href="docs/architecture.md">架构</a> ·
+  <a href="SECURITY.md">安全</a>
+</p>
+
+<p><a href="README.md">简体中文</a> · <a href="README.en.md">English</a></p>
+
+</div>
+
+<a id="project-overview"></a>
+
+## 1 项目概览
+
+本仓库是一台 Skill 仓库生成器，目标读者包括第一次接触模板的人、新 Skill 维护者和需要审计运行框架的人
+
+生成器根据名称、用途和界面文字创建新的独立 Git 仓库，并预置 Runner、Schema、validator、测试、安全扫描、受控学习和稳定核心锁
+
+生成结果默认保持安全草稿状态，领域工作流和测试完成前不会执行真实任务
+
+<div align="center">
+
+表 1.1 模板公开状态
+
+| 项目 | 当前内容 |
+|---|---|
+| 当前版本 | `0.11.2`，读取自 [`VERSION`](VERSION) 和 [`CHANGELOG.md`](CHANGELOG.md) |
+| 生成范围 | 一次生成一个独立 Skill 仓库 |
+| 默认状态 | `definition.configured=false`，Runner 拒绝真实任务 |
+| 稳定核心 | 使用 `.core-lock.json` 保存 SHA-256 摘要 |
+| 验证入口 | 模板验证、单元测试和敏感信息扫描 |
+| 许可证 | 仓库根目录未提供许可证，公开可见不自动授予复制、修改、再分发或商业使用权 |
+| 文档语言 | 简体中文主文档和英文镜像 |
+
+</div>
+
+<div align="center">
+
+```mermaid
+%% 展示输入信息怎样经过模板工厂形成一个保持安全草稿状态的独立仓库
+flowchart TD
+    A[确认名称 用途和界面文字] --> B[生成器复制 template 内容]
+    B --> C[替换占位符并移除 tmpl 后缀]
+    C --> D[创建稳定核心锁]
+    D --> E[初始化独立 Git 仓库]
+    E --> F[执行草稿验证]
+    F --> G[交付 configured=false 的安全草稿]
+```
+
+图 1.1 AIALRA Skill Template 的生成闭环
+
+</div>
+
+<a id="repository-layers"></a>
+## 2 阅读目标
 
 这份文件回答两个问题：这个仓库是什么，以及怎样创建第一个 Skill 仓库
 
@@ -12,17 +80,17 @@
 
 读完以后，你应该能够生成一个安全草稿仓库，并知道下一步该阅读哪份文档
 
-你现在不需要理解 Runner、Schema、validator 或状态机；这些概念会在后续文档中逐个解释
+你现在不需要理解 Runner、Schema、validator 或状态机，这些概念会在后续文档中逐个解释
 
-## 先用一句话理解这个仓库
+## 3 仓库定位
 
 这个仓库是一台“Skill 仓库生成器”
 
-你提供 Skill 的名称、用途和界面文字，生成器会创建一个新的独立 Git 仓库；新仓库已经包含运行框架、测试、安全检查和学习边界
+你提供 Skill 的名称、用途和界面文字，生成器会创建一个新的独立 Git 仓库，新仓库已经包含运行框架、测试、安全检查和学习边界
 
-生成结果默认处于安全草稿状态；完成领域工作流和测试前，它不会执行真实任务
+生成结果默认处于安全草稿状态，完成领域工作流和测试前，生成后的 Runner 不会执行真实任务
 
-## Skill 是什么
+## 4 Skill 组成
 
 Skill 是一组围绕明确任务组织起来的指令和资源
 
@@ -36,30 +104,44 @@ Skill 是一组围绕明确任务组织起来的指令和资源
 - 安全边界
 - 测试
 
-本模板坚持一个仓库只保存一个 Skill；这样可以让版本、权限、测试和回滚保持独立
+本模板坚持一个仓库只保存一个 Skill，这样可以让版本、权限、测试和回滚保持独立
 
-## 模板仓库和生成仓库有什么区别
+## 5 仓库分层
 
 你会接触两种仓库
+
+<div align="center">
+
+表 5.1 仓库分层明细
 
 | 仓库 | 用途 | 谁来修改 |
 |---|---|---|
 | 当前模板仓库 | 保存通用生成器和 Runtime | 模板维护者 |
 | 生成后的 Skill 仓库 | 保存某一个具体 Skill | 该 Skill 的维护者 |
 
-当前仓库的 `template/` 目录保存生成素材；运行生成器后，这些素材会进入新的独立仓库
+</div>
+
+当前仓库的 `template/` 目录保存生成素材，运行生成器后，这些素材会进入新的独立仓库
 
 这句话的准确含义是：生成后的 Skill 仓库与 `template/` 目录经过处理后的结构相同，不会与整个模板仓库相同
 
 生成器会依次完成以下处理：
 
-1. 把 `template/` 里面的文件复制到新仓库根目录 —— 新仓库以 `template/` 的内容为基础
-2. 把 `__SKILL_NAME__` 等占位符替换成真实信息 —— 通用素材因此变成当前 Skill 的文件
-3. 删除文件名末尾的 `.tmpl` —— 例如 `README.md.tmpl` 会变成 `README.md`
-4. 创建 `.core-lock.json` —— 新仓库从第一次生成开始就能检测稳定核心漂移
-5. 初始化新的 `.git/` —— 新 Skill 因此拥有独立提交、版本、远端和回滚历史
+- 第一步，把 `template/` 里面的文件复制到新仓库根目录 —— 新仓库以 `template/` 的内容为基础
+
+- 第二步，把 `__SKILL_NAME__` 等占位符替换成真实信息 —— 通用素材因此变成当前 Skill 的文件
+
+- 第三步，删除文件名末尾的 `.tmpl` —— 例如 `README.md.tmpl` 会变成 `README.md`
+
+- 第四步，创建 `.core-lock.json` —— 新仓库从第一次生成开始就能检测稳定核心漂移
+
+- 第五步，初始化新的 `.git/` —— 新 Skill 因此拥有独立提交、版本、远端和回滚历史
 
 下面是几项实际映射：
+
+<div align="center">
+
+表 5.2 仓库分层明细
 
 | 模板工厂中的来源 | 生成仓库中的结果 | 是否进入新仓库 |
 |---|---|---|
@@ -70,18 +152,21 @@ Skill 是一组围绕明确任务组织起来的指令和资源
 | 根目录 `docs/` | 没有对应目录 | 不进入，它只解释模板工厂 |
 | 根目录 `tests/test_template_runtime.py` | 没有对应文件 | 不进入，它只测试模板工厂 |
 
+</div>
+
 因此可以把当前仓库理解成两层：
 
 - 模板工厂层 —— 根目录的生成器、说明和模板测试
 - Skill 成品层 —— `template/` 经过替换后形成的独立仓库
 
-### 为什么生成仓库不能放在模板仓库里面
+### 5.1 嵌套 Git 仓库风险
 
 模板仓库和生成仓库都会拥有自己的 `.git/`
 
 错误结构长这样：
 
 ```text
+# 以下目录图说明仓库边界或生成结果，行末注释解释每个条目
 AIALRA-SKILL-TEMPLATE/       # 外层模板仓库
 └── example-skill/           # 错误放入外层仓库内部的生成仓库
     └── .git/                # 内层 Skill 仓库自己的 Git 历史
@@ -98,28 +183,39 @@ AIALRA-SKILL-TEMPLATE/       # 外层模板仓库
 正确结构让两个仓库成为同级目录：
 
 ```text
+# 以下目录图说明仓库边界或生成结果，行末注释解释每个条目
 工作目录/
 ├── AIALRA-SKILL-TEMPLATE/   # 模板工厂仓库
 └── example-skill/           # 生成后的独立 Skill 仓库
 ```
 
-## 创建第一个 Skill 仓库
+<a id="create-repository"></a>
 
-### 第一步：准备五项信息
+## 6 创建第一个 Skill 仓库
+
+### 6.1 准备五项生成信息
 
 创建前需要确定以下五项信息：
 
-1. Skill 名称 —— 这是程序使用的稳定标识，只能包含小写字母、数字和单个连字符，长度为 1 到 64 个字符，例如 `example-research-skill`
-2. 完整用途说明 —— 这是 Codex 判断何时触发 Skill 的主要依据，长度为 40 到 1024 个字符，必须同时写明适用请求和不适用边界
-3. 界面显示名称 —— 这是人在 Codex 界面中看到的名称，可以使用空格和自然语言，例如 `Example Research Skill`
-4. 界面短描述 —— 这是界面中帮助人快速理解 Skill 的简短说明，长度为 25 到 64 个字符
-5. 默认调用提示 —— 这是界面提供的示例请求，必须明确包含 `$Skill名称`，让 Codex 知道用户希望调用哪个 Skill
+- 第一步，Skill 名称 —— 这是程序使用的稳定标识，只能包含小写字母、数字和单个连字符，长度为 1 到 64 个字符，例如 `example-research-skill`
+
+- 第二步，完整用途说明 —— 这是 Codex 判断何时触发 Skill 的主要依据，长度为 40 到 1024 个字符，必须同时写明适用请求和不适用边界
+
+- 第三步，界面显示名称 —— 这是人在 Codex 界面中看到的名称，可以使用空格和自然语言，例如 `Example Research Skill`
+
+- 第四步，界面短描述 —— 这是界面中帮助人快速理解 Skill 的简短说明，长度为 25 到 64 个字符
+
+- 第五步，默认调用提示 —— 这是界面提供的示例请求，必须明确包含 `$Skill名称`，让 Codex 知道用户希望调用哪个 Skill
 
 这五项信息可以先在与 Codex 的对话中讨论，由 Codex 整理成候选文本并交给你确认
 
 确认后，它们作为生成命令的参数传入，不需要先手工写入模板文件
 
 生成器会把它们写入以下位置：
+
+<div align="center">
+
+表 6.1 创建第一个 Skill 仓库明细
 
 | 信息 | 主要写入位置 | 生成后有什么用 |
 |---|---|---|
@@ -129,7 +225,9 @@ AIALRA-SKILL-TEMPLATE/       # 外层模板仓库
 | 界面短描述 | `agents/openai.yaml` | 让 Skill 列表能够快速说明用途 |
 | 默认调用提示 | `agents/openai.yaml` | 为用户提供一条可以直接修改和使用的示例请求 |
 
-### 线上仓库位置怎样处理
+</div>
+
+### 6.2 线上仓库处理顺序
 
 这五项信息不包含 GitHub 仓库地址
 
@@ -139,30 +237,39 @@ AIALRA-SKILL-TEMPLATE/       # 外层模板仓库
 
 线上仓库按照以下顺序处理：
 
-1. 确定 Skill 名称 —— 建议本地目录名与线上仓库名保持一致
-2. 需要提前占用名称时，在 GitHub 创建一个空仓库 —— 不要同时生成 README、许可证或 `.gitignore`
-3. 在模板仓库旁边生成本地 Skill 仓库 —— `--output` 使用同级目录
-4. 完成人工审计和本地验证 —— 未通过以前不推送正式版本
-5. 把空仓库 URL 设置为生成仓库的 `origin` —— 远端地址保存在本地 `.git/config`
-6. 提交并推送经过验证的内容 —— 线上仓库从第一个合格提交开始保存历史
+- 第一步，确定 Skill 名称 —— 建议本地目录名与线上仓库名保持一致
+
+- 第二步，需要提前占用名称时，在 GitHub 创建一个空仓库 —— 不要同时生成 README、许可证或 `.gitignore`
+
+- 第三步，在模板仓库旁边生成本地 Skill 仓库 —— `--output` 使用同级目录
+
+- 第四步，完成人工审计和本地验证 —— 未通过以前不推送正式版本
+
+- 第五步，把空仓库 URL 设置为生成仓库的 `origin` —— 远端地址保存在本地 `.git/config`
+
+- 第六步，提交并推送经过验证的内容 —— 线上仓库从第一个合格提交开始保存历史
 
 GitHub token、密码和其他认证信息由 Git 或已授权工具管理，不能写入生成命令、README、Skill 文件或远端 URL
 
-### 第二步：运行生成命令
+### 6.3 运行生成命令
 
 在当前仓库根目录运行：
 
 ```bash
-python3 scripts/create_skill_repo.py \
-  --name example-research-skill \
-  --output ../example-research-skill \
-  --display-name "Example Research Skill" \
-  --short-description "Research a defined topic with checked evidence" \
-  --description "Research a defined topic with checked evidence. Use when the user requests evidence-based research. Do not use for purchasing, account changes, or unrelated tasks." \
-  --default-prompt 'Use $example-research-skill to research this topic.'
+skill_name="example-research-skill" # 设置程序使用的稳定 Skill 名称
+output_path="../example-research-skill" # 把生成仓库放在模板仓库旁边
+display_name="Example Research Skill" # 设置 Codex 界面显示名称
+short_description="Research a defined topic with checked evidence" # 设置界面短描述
+full_description="Research a defined topic with checked evidence. Use when the user requests evidence-based research. Do not use for purchasing, account changes, or unrelated tasks." # 写明适用范围和排除边界
+default_prompt='Use $example-research-skill to research this topic.' # 提供明确引用当前 Skill 的默认请求
+python3 scripts/create_skill_repo.py --name "$skill_name" --output "$output_path" --display-name "$display_name" --short-description "$short_description" --description "$full_description" --default-prompt "$default_prompt" # 生成独立安全草稿仓库
 ```
 
 命令每一部分的含义如下：
+
+<div align="center">
+
+表 6.2 创建第一个 Skill 仓库明细
 
 | 命令部分 | 是什么 | 有什么用 |
 |---|---|---|
@@ -177,17 +284,20 @@ python3 scripts/create_skill_repo.py \
 | `--default-prompt` | 默认调用提示 | 写入界面元数据，并通过 `$example-research-skill` 明确引用当前 Skill |
 | 引号 | 参数边界 | 让包含空格和 `$` 的整段文字作为一个参数传给生成器 |
 
+</div>
+
 示例文字都需要替换成真实 Skill 信息
 
 名称改变时，`--name`、`--output` 和默认提示中的 `$example-research-skill` 必须一起修改
 
 生成器还有一个可选的 `--portable` 参数，它只在隔离测试或无法使用官方初始化器时使用，正常创建正式 Skill 时不添加
 
-### 第三步：确认生成成功
+### 6.4 确认生成结果
 
 成功后，命令会返回类似下面的结果：
 
-```json
+```jsonc
+// 以下字段展示生成器或工作流返回的结构化结果
 {
   "created": true,
   "repository": "/本地绝对路径/example-research-skill",
@@ -211,6 +321,7 @@ python3 scripts/create_skill_repo.py \
 新目录中应当包含以下主要内容，`#` 后面的文字是本页解释，不属于真实文件名：
 
 ```text
+# 以下目录图说明仓库边界或生成结果，行末注释解释每个条目
 example-research-skill/                         # 新 Skill 的独立仓库根目录
 ├── .git/                                       # 当前 Skill 自己的提交、分支和远端配置
 ├── .agents/skills/example-research-skill/      # Codex 能够发现和运行的 Skill 主目录
@@ -236,11 +347,14 @@ example-research-skill/                         # 新 Skill 的独立仓库根�
 
 生成器还会初始化独立 Git 仓库，并创建第一份核心锁
 
-## 为什么新仓库暂时不能运行
+<a id="safe-draft"></a>
+
+## 7 安全草稿状态
 
 新仓库的 `workflow.yaml` 包含：
 
-```json
+```jsonc
+// 以下字段展示生成器或工作流返回的结构化结果
 {
   "definition": {
     "configured": false
@@ -248,18 +362,27 @@ example-research-skill/                         # 新 Skill 的独立仓库根�
 }
 ```
 
-`false` 表示领域流程尚未配置完成；Runner 会拒绝启动真实任务
+`false` 表示领域流程尚未配置完成，Runner 会拒绝启动真实任务
 
 把它改成 `true` 以前，需要完成：
 
-1. 定义支持范围和排除范围 —— 在 `SKILL.md` 中明确哪些请求应当触发，哪些相邻请求不能触发
-2. 定义全部工作流节点 —— 用真实领域步骤替换 `workflow.yaml` 中唯一的通用草稿节点
-3. 定义每个节点的输入和输出 —— 为入口、节点结果和最终结果编写可由 Runner 检查的 Schema
-4. 选择执行器并声明权限 —— 为每个节点固定 `script`、`mcp`、`browser-dom`、`computer-use` 或 `reasoning`，同时声明副作用和确认要求
-5. 添加成功和失败测试 —— 证明合法请求能够完成，并证明错误输入、越权操作和相邻非触发请求会被拒绝；使用共享运行时时还要验证两个任务同时首次启动
-6. 完成安全检查 —— 确认仓库没有凭据和个人信息，所有外部写入都有用户确认
-7. 设置 `definition.configured=true` —— 只在领域流程和测试已经完成后解除安全草稿状态
-8. 更新版本并重新生成核心锁 —— 保存本次稳定行为的版本记录和 SHA-256 摘要
+- 第一步，定义支持范围和排除范围 —— 在 `SKILL.md` 中明确哪些请求应当触发，哪些相邻请求不能触发
+
+- 第二步，定义全部工作流节点 —— 用真实领域步骤替换 `workflow.yaml` 中唯一的通用草稿节点
+
+- 第三步，定义每个节点的输入和输出 —— 为入口、节点结果和最终结果编写可由 Runner 检查的 Schema
+
+- 第四步，选择执行器并声明权限 —— 为每个节点固定 `script`、`mcp`、`browser-dom`、`computer-use` 或 `reasoning`，同时声明副作用和确认要求
+
+- 第五步，添加成功和失败测试 —— 证明合法请求能够完成，错误输入、越权操作和相邻非触发请求会被拒绝
+
+  注：使用共享运行时时，还要验证两个任务同时首次启动
+
+- 第六步，完成安全检查 —— 确认仓库没有凭据和个人信息，所有外部写入都有用户确认
+
+- 第七步，设置 `definition.configured=true` —— 只在领域流程和测试已经完成后解除安全草稿状态
+
+- 第八步，更新版本并重新生成核心锁 —— 保存本次稳定行为的版本记录和 SHA-256 摘要
 
 涉及外部数据采集时，在第二项以前先调查官方接口、已连接工具、成熟 MCP、CLI 和 Skill
 
@@ -269,7 +392,7 @@ example-research-skill/                         # 新 Skill 的独立仓库根�
 
 生成仓库自己的 `README.md` 会逐步解释这些操作
 
-## 这个模板会替你守住什么
+## 8 模板内置约束
 
 模板内置以下约束：
 
@@ -278,13 +401,13 @@ example-research-skill/                         # 新 Skill 的独立仓库根�
 - validator 执行额外的确定性检查 —— Schema 无法表达的跨字段关系和结果规则由程序继续检查
 - 重试、回退和超时都有限制 —— 失败不能无限循环，工作流只能按照预先声明的路径继续
 - 写入和破坏性操作需要用户确认 —— Runner 会在改变外部状态前暂停，用户明确同意后才能继续
-- 稳定核心由 SHA-256 清单检测漂移 —— 工作流、Schema 或 Runtime 出现未登记变化时会硬停止
+- 稳定核心依据 `.core-lock.json` 中的 SHA-256 清单检测漂移 —— 工作流、Schema 或 Runtime 出现未登记变化时会硬停止
 - 学习内容只能写入 `learning/` —— 运行经验只能形成建议，不能自动修改稳定工作流和权限
 - 敏感信息扫描会在本地和 CI 中执行 —— 当前文件和完整 Git 历史都会检查疑似凭据与私钥
 
-这些名称暂时看不懂也没有关系；阅读路线会在需要时引导你进入对应解释
+这些名称暂时看不懂也没有关系，阅读路线会在需要时引导你进入对应解释
 
-## 这个模板的边界
+## 9 模板责任边界
 
 模板负责生成运行框架和强制检查
 
@@ -297,11 +420,15 @@ example-research-skill/                         # 新 Skill 的独立仓库根�
 - 领域测试
 - 结果质量标准
 
-身份验证、验证码、扫码和双重认证由用户亲自完成；真实凭据和浏览器会话不能写入 Git
+身份验证、验证码、扫码和双重认证由用户亲自完成，真实凭据和浏览器会话不能写入 Git
 
-## 接下来应该读什么
+## 10 后续阅读路线
 
 根据你的目标选择一份文档
+
+<div align="center">
+
+表 10.1 后续阅读路线明细
 
 | 你的目标 | 下一份文档 |
 |---|---|
@@ -316,16 +443,18 @@ example-research-skill/                         # 新 Skill 的独立仓库根�
 | 正在迁移旧版 v0.1 | [迁移指南](docs/migration-v0.2.md) |
 | 想审查设计依据 | [研究依据](docs/research-notes.md) |
 
+</div>
+
 第一次阅读时，建议只打开与你当前目标对应的一份文档
 
-## 验证模板自身
+## 11 模板仓库验证
 
 模板维护者修改当前仓库后，需要运行：
 
 ```bash
-python3 scripts/validate_template.py
-python3 -m unittest discover -s tests -v
-python3 scripts/check_secrets.py
+python3 scripts/validate_template.py # 检查模板结构、生成结果和核心契约
+python3 -m unittest discover -s tests -v # 运行模板 Runtime 与生成仓库回归测试
+python3 scripts/check_secrets.py # 扫描当前文件和 Git 历史中的疑似敏感信息
 ```
 
 三条命令的用途、成功输出和失败处理由 [贡献指南](CONTRIBUTING.md) 逐步解释
