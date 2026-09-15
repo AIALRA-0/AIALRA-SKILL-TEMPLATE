@@ -16,7 +16,7 @@ permissions:
 jobs:
   # Pin both the reusable workflow and its scanner input to the same immutable commit.
   safe-publish:
-    uses: AIALRA-0/agent-github-safe-publish/.github/workflows/reusable-safe-publish.yml@76d85b8e0bc4ac1a60e176cbd73c337a0815ce99
+    uses: AIALRA-0/agent-github-safe-publish/.github/workflows/reusable-safe-publish.yml@7af15f0a47225a4813e2fb6a552a58ad71ef2dbf
     with:
       tool_ref: 76d85b8e0bc4ac1a60e176cbd73c337a0815ce99
       shadow: true
